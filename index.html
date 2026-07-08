@@ -1199,6 +1199,46 @@ async function init(){
   updateGates();
 }
 init();
-</script>
+<div style="margin-top: 20px; padding: 15px; border: 1px solid #ccc;">
+        <h3>Carica il tuo documento</h3>
+        <input type="file" id="pdfInput" accept="application/pdf">
+        <button onclick="uploadAndAnalyze()">Analizza PDF</button>
+        <p id="statusMessage"></p>
+    </div>
+
+    <script>
+        async function uploadAndAnalyze() {
+            const fileInput = document.getElementById('pdfInput');
+            const status = document.getElementById('statusMessage');
+            
+            if (fileInput.files.length === 0) {
+                alert("Per favore, seleziona un file PDF.");
+                return;
+            }
+
+            const file = fileInput.files[0];
+            const reader = new FileReader();
+
+            reader.onload = async function(e) {
+                const base64Data = e.target.result.split(',')[1];
+                status.innerText = "Analisi in corso... attendi.";
+
+                const response = await fetch('/api/generate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        fileData: base64Data,
+                        prompt: "Analizza questo documento e genera le priorità."
+                    })
+                });
+
+                const result = await response.json();
+                status.innerText = "Analisi completata!";
+                console.log(result.text); // Qui appariranno le tue priorità
+            };
+
+            reader.readAsDataURL(file);
+        }
+    </script>
 </body>
 </html>
