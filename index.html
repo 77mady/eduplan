@@ -2,27 +2,29 @@
 <html lang="it">
 <head>
     <meta charset="UTF-8">
-    <title>Analizzatore PDF</title>
+    <title>Progetto PTOF</title>
 </head>
 <body>
-    <h1>Carica il PDF per l'analisi</h1>
+    <h1>Benvenuta nel PTOF</h1>
     
-    <input type="file" id="pdfInput" accept="application/pdf">
-    <button onclick="uploadAndAnalyze()">Analizza PDF</button>
+    <div>
+        <input type="file" id="pdfInput" accept="application/pdf">
+        <button onclick="uploadAndAnalyze()">Analizza PDF</button>
+    </div>
     
-    <p id="statusMessage"></p>
+    <div id="statusMessage" style="margin-top: 20px; font-weight: bold;"></div>
 
     <script>
         async function uploadAndAnalyze() {
             const fileInput = document.getElementById('pdfInput');
             const status = document.getElementById('statusMessage');
             
-            if (fileInput.files.length === 0) {
-                alert("Seleziona un file PDF!");
+            if (!fileInput.files || fileInput.files.length === 0) {
+                alert("Seleziona prima un file PDF.");
                 return;
             }
 
-            status.innerText = "Analisi in corso, attendi...";
+            status.innerText = "Elaborazione in corso, attendi...";
             const file = fileInput.files[0];
             const reader = new FileReader();
 
@@ -35,7 +37,7 @@
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
                             fileData: base64Data,
-                            prompt: "Analizza questo documento e riassumi le priorità operative."
+                            prompt: "Analizza questo documento PTOF."
                         })
                     });
 
@@ -44,10 +46,10 @@
                     if (response.ok) {
                         status.innerText = "Risultato: " + result.text;
                     } else {
-                        status.innerText = "Errore dal server: " + result.error;
+                        status.innerText = "Errore: " + result.error;
                     }
                 } catch (error) {
-                    status.innerText = "Errore di connessione: " + error.message;
+                    status.innerText = "Errore di connessione.";
                 }
             };
             reader.readAsDataURL(file);
