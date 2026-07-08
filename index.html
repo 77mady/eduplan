@@ -1,0 +1,1204 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EDUPLAN — Curricolo, programmazione e valutazione con l'IA</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+<style>
+:root{
+  --bg:#F6F3EA;
+  --panel:#FFFFFF;
+  --ink:#1F2A28;
+  --ink-soft:#4C5652;
+  --ink-faint:#8B9490;
+  --brand:#2F6F5E;
+  --brand-deep:#204F42;
+  --brand-soft:#DEEBE6;
+  --accent:#E8B84B;
+  --accent-deep:#C99A2E;
+  --accent-soft:#FBEFD1;
+  --plum:#8E4A6B;
+  --plum-soft:#F1E1EA;
+  --line:#DEDACB;
+  --danger:#B23B32;
+  --danger-soft:#F7E3E0;
+  --radius:16px;
+  --shadow:0 1px 2px rgba(31,42,40,.05), 0 16px 32px -18px rgba(31,42,40,.35);
+  --font-display:'Space Grotesk',system-ui,sans-serif;
+  --font-body:'Inter',system-ui,-apple-system,sans-serif;
+  --font-mono:'IBM Plex Mono',ui-monospace,monospace;
+}
+*{box-sizing:border-box;}
+html{scroll-behavior:smooth;}
+body{margin:0;font-family:var(--font-body);color:var(--ink);background:var(--bg);}
+@media (prefers-reduced-motion: reduce){ html{scroll-behavior:auto;} *{animation-duration:.001ms !important; transition-duration:.001ms !important;} }
+h1,h2,h3{font-family:var(--font-display);margin:0;letter-spacing:-.01em;}
+p{margin:0;}
+a{color:var(--brand-deep);}
+button{font-family:inherit;cursor:pointer;}
+textarea,input,select{font-family:inherit;font-size:14px;}
+::selection{background:var(--accent-soft);}
+:focus-visible{outline:2.5px solid var(--brand);outline-offset:2px;}
+
+.wrap{max-width:1080px;margin:0 auto;padding:0 24px;}
+
+/* ---------- Sticky nav ---------- */
+.nav{
+  position:sticky;top:0;z-index:40;background:rgba(246,243,234,.9);backdrop-filter:blur(8px);
+  border-bottom:1px solid var(--line);opacity:0;transform:translateY(-8px);pointer-events:none;
+  transition:opacity .25s ease, transform .25s ease;
+}
+.nav.show{opacity:1;transform:none;pointer-events:auto;}
+.nav-inner{max-width:1080px;margin:0 auto;padding:12px 24px;display:flex;align-items:center;justify-content:space-between;gap:16px;}
+.nav-brand{font-family:var(--font-display);font-weight:700;font-size:17px;color:var(--brand-deep);}
+.nav-links{display:flex;gap:4px;flex-wrap:wrap;}
+.nav-links a{
+  font-size:12.5px;font-weight:600;color:var(--ink-soft);text-decoration:none;padding:7px 11px;border-radius:8px;
+  display:inline-flex;align-items:center;gap:5px;
+}
+.nav-links a:hover{background:var(--brand-soft);color:var(--brand-deep);}
+.nav-links a.is-locked{color:var(--ink-faint);}
+.nav-links a.is-locked .lockdot{font-size:10px;}
+.gear-btn{
+  border:1px solid var(--line);background:var(--panel);width:34px;height:34px;border-radius:9px;font-size:15px;
+  display:flex;align-items:center;justify-content:center;
+}
+.gear-btn:hover{background:var(--brand-soft);}
+
+/* ---------- Hero ---------- */
+.hero{min-height:92vh;display:flex;flex-direction:column;justify-content:center;position:relative;overflow:hidden;}
+.hero::before{
+  content:"";position:absolute;inset:0;z-index:-1;
+  background:
+    radial-gradient(600px 400px at 82% 10%, rgba(232,184,75,.28), transparent 60%),
+    radial-gradient(500px 380px at 8% 85%, rgba(47,111,94,.16), transparent 60%);
+}
+.eyebrow{
+  font-family:var(--font-mono);font-size:12px;letter-spacing:.16em;text-transform:uppercase;
+  color:var(--brand-deep);font-weight:600;display:inline-flex;align-items:center;gap:8px;margin-bottom:20px;
+}
+.eyebrow::before{content:"";width:8px;height:8px;background:var(--accent);border-radius:2px;transform:rotate(45deg);}
+.hero h1{font-size:clamp(44px,7vw,84px);line-height:.95;color:var(--brand-deep);}
+.hero h1 span{color:var(--accent-deep);}
+.hero-sub{max-width:640px;font-size:17px;line-height:1.6;color:var(--ink-soft);margin:26px 0 34px;}
+.badges-row{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:36px;}
+
+.btn{
+  display:inline-flex;align-items:center;gap:9px;padding:14px 26px;border-radius:12px;border:none;
+  font-weight:700;font-size:15px;transition:transform .12s ease, box-shadow .15s ease;
+}
+.btn.primary{background:var(--brand-deep);color:#fff;box-shadow:0 10px 24px -10px rgba(32,79,66,.6);}
+.btn.primary:hover{transform:translateY(-1px);}
+.btn.accent{background:var(--accent);color:#3A2C05;}
+.btn.accent:hover{background:var(--accent-deep);}
+.btn.ghost{background:transparent;color:var(--ink);border:1.5px solid var(--line);}
+.btn.ghost:hover{background:var(--panel);}
+.btn.sm{padding:9px 16px;font-size:13px;border-radius:9px;}
+.btn:disabled{opacity:.4;cursor:not-allowed;transform:none;box-shadow:none;}
+
+.hex{
+  --size:64px;width:var(--size);height:calc(var(--size)*.92);flex:none;
+  clip-path:polygon(25% 3%, 75% 3%, 100% 50%, 75% 97%, 25% 97%, 0% 50%);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  font-family:var(--font-display);color:#fff;
+}
+.hex.f2025{background:linear-gradient(155deg,var(--brand),var(--brand-deep));}
+.hex.f2012{background:linear-gradient(155deg,#9B9078,#7C7360);}
+.hex .yr{font-weight:700;font-size:15px;line-height:1;}
+.hex .lb{font-family:var(--font-mono);font-size:6px;letter-spacing:.05em;text-transform:uppercase;margin-top:2px;text-align:center;max-width:50px;}
+.hex-pill{display:inline-flex;align-items:center;gap:8px;}
+.hex-pill .txt{font-size:12.5px;font-weight:600;color:var(--ink-soft);}
+
+section.block{padding:96px 0;border-top:1px solid var(--line);position:relative;}
+.sec-eyebrow{font-family:var(--font-mono);font-size:11.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--plum);font-weight:600;margin-bottom:10px;}
+.sec-title{font-size:clamp(28px,4vw,40px);color:var(--brand-deep);margin-bottom:14px;}
+.sec-sub{font-size:15.5px;line-height:1.65;color:var(--ink-soft);max-width:760px;margin-bottom:38px;}
+
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:26px 28px;}
+.card + .card{margin-top:20px;}
+
+/* ---------- Lock overlay (sequential progression) ---------- */
+.block.locked .wrap > *:not(.lock-overlay){opacity:.3;filter:grayscale(.5);pointer-events:none;user-select:none;}
+.lock-overlay{display:none;}
+.block.locked .lock-overlay{
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;text-align:center;
+  position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:min(420px,86%);
+  background:#fff;border:1.5px solid var(--line);border-radius:16px;box-shadow:var(--shadow);
+  padding:30px 32px;z-index:6;
+}
+.lock-overlay .lock-icon{font-size:26px;}
+.lock-overlay h4{font-size:15.5px;color:var(--brand-deep);}
+.lock-overlay p{font-size:13px;color:var(--ink-soft);line-height:1.5;}
+
+/* Dropzone */
+.dropzone{
+  border:1.5px dashed #B8B097;border-radius:12px;padding:28px;text-align:center;color:var(--ink-soft);font-size:13.5px;
+  background:#FCFAF3;transition:.15s;cursor:pointer;
+}
+.dropzone.drag{background:var(--accent-soft);border-color:var(--accent-deep);color:var(--ink);}
+.dropzone strong{color:var(--ink);}
+.file-chip{display:inline-flex;align-items:center;gap:8px;background:var(--brand-soft);color:var(--brand-deep);padding:6px 13px;border-radius:20px;font-size:12.5px;font-weight:600;margin-top:12px;}
+.file-chip button{background:none;border:none;color:var(--brand-deep);font-weight:800;font-size:14px;padding:0;}
+
+.field{display:flex;flex-direction:column;gap:7px;}
+.field label{font-size:12.5px;font-weight:700;color:var(--ink-soft);}
+.field .req{color:var(--danger);}
+textarea,select,input[type=text]{
+  border:1px solid var(--line);border-radius:9px;padding:11px 13px;background:#fff;color:var(--ink);width:100%;
+}
+textarea{min-height:90px;line-height:1.55;resize:vertical;}
+
+.toggle-row{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;}
+@media (max-width:760px){.toggle-row,.eval-row,.dropdown-row{grid-template-columns:1fr !important;}}
+.toggle-card{border:1.5px solid var(--line);border-radius:14px;padding:18px;background:#fff;cursor:pointer;transition:.15s;text-align:left;}
+.toggle-card:hover{border-color:var(--brand);}
+.toggle-card.on{border-color:var(--brand);background:var(--brand-soft);box-shadow:0 0 0 3px rgba(47,111,94,.12) inset;}
+.toggle-card h4{font-size:14.5px;margin-bottom:6px;color:var(--brand-deep);}
+.toggle-card p{font-size:12.5px;color:var(--ink-soft);line-height:1.5;}
+.toggle-check{width:18px;height:18px;border-radius:50%;border:2px solid var(--line);display:inline-block;margin-bottom:10px;position:relative;}
+.toggle-card.on .toggle-check{border-color:var(--brand);background:var(--brand);}
+.toggle-card.on .toggle-check::after{content:"✓";color:#fff;font-size:11px;position:absolute;inset:0;display:flex;align-items:center;justify-content:center;}
+
+.eval-row{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:16px;}
+.eval-card{border:1.5px solid var(--line);border-radius:12px;padding:14px 16px;background:#fff;cursor:pointer;transition:.15s;}
+.eval-card:hover{border-color:var(--plum);}
+.eval-card.on{border-color:var(--plum);background:var(--plum-soft);}
+.eval-card h5{font-size:13.5px;margin:0 0 4px;color:var(--plum);}
+.eval-card p{font-size:11.5px;color:var(--ink-soft);line-height:1.4;}
+
+.dropdown-row{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;}
+.order-box{border:1.5px solid var(--line);border-radius:12px;padding:16px;background:#fff;}
+.order-box.active{border-color:var(--brand);background:var(--brand-soft);}
+.order-box h5{font-size:13px;margin-bottom:8px;color:var(--brand-deep);}
+
+.chip-panel{display:none;flex-wrap:wrap;gap:8px;margin-top:12px;padding:14px;background:#FCFAF3;border-radius:10px;border:1px solid var(--line);}
+.chip-panel.show{display:flex;}
+.chip{padding:8px 14px;border-radius:20px;border:1.5px solid var(--line);background:#fff;font-size:12.5px;font-weight:600;color:var(--ink-soft);}
+.chip.on{border-color:var(--plum);background:var(--plum-soft);color:var(--plum);}
+
+.doc-toolbar{display:flex;justify-content:space-between;align-items:center;gap:12px;margin:18px 0 8px;flex-wrap:wrap;}
+.doc-preview{
+  background:#FCFAF3;border:1px solid var(--line);border-radius:12px;padding:20px 22px;min-height:100px;
+  font-size:13.8px;line-height:1.72;white-space:pre-wrap;color:var(--ink);
+}
+.doc-preview:empty::before{content:attr(data-placeholder);color:var(--ink-faint);font-style:italic;}
+.doc-preview[contenteditable=true]{outline:2px solid var(--accent-deep);outline-offset:2px;background:#fff;}
+.muted{color:var(--ink-faint);font-size:12.5px;}
+.row-actions{display:flex;gap:10px;margin-top:14px;flex-wrap:wrap;align-items:center;}
+
+.info-list{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:10px;}
+.info-list li{font-size:13.5px;line-height:1.5;padding-left:22px;position:relative;color:var(--ink-soft);}
+.info-list li::before{content:"—";position:absolute;left:0;color:var(--plum);font-weight:700;}
+.note-box{background:var(--accent-soft);border:1px solid #E9D89B;border-radius:12px;padding:14px 18px;font-size:13px;line-height:1.55;color:#5A4816;}
+
+.required-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;}
+@media (max-width:760px){.required-grid{grid-template-columns:1fr;}}
+
+.spinner{width:14px;height:14px;border-radius:50%;border:2px solid rgba(255,255,255,.4);border-top-color:#fff;animation:spin .8s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+.toast-host{position:fixed;bottom:18px;right:18px;display:flex;flex-direction:column;gap:8px;z-index:80;max-width:340px;}
+.toast{background:var(--ink);color:#fff;padding:11px 16px;border-radius:9px;font-size:13px;box-shadow:var(--shadow);display:flex;gap:10px;align-items:center;}
+.toast.err{background:var(--danger);}
+.toast.ok{background:var(--brand-deep);}
+
+.modal-overlay{position:fixed;inset:0;background:rgba(31,42,40,.5);z-index:90;display:none;align-items:center;justify-content:center;padding:20px;}
+.modal-overlay.show{display:flex;}
+.modal{background:#fff;border-radius:16px;max-width:460px;width:100%;padding:28px;box-shadow:var(--shadow);}
+.modal h3{font-size:19px;color:var(--brand-deep);margin-bottom:6px;}
+.modal p{font-size:13px;color:var(--ink-soft);line-height:1.55;margin-bottom:16px;}
+.modal-close{float:right;background:none;border:none;font-size:18px;color:var(--ink-faint);}
+
+/* AI chat per sezione */
+.ai-chat{display:none;border:1px solid var(--line);border-radius:12px;background:#FCFAF3;padding:14px;margin-top:12px;}
+.ai-chat.show{display:block;}
+.chat-msgs{display:flex;flex-direction:column;gap:9px;max-height:220px;overflow-y:auto;margin-bottom:10px;}
+.msg{padding:9px 13px;border-radius:10px;font-size:12.8px;line-height:1.5;max-width:90%;}
+.msg.user{align-self:flex-end;background:var(--brand-deep);color:#fff;border-bottom-right-radius:3px;}
+.msg.ai{align-self:flex-start;background:var(--brand-soft);color:var(--ink);border-bottom-left-radius:3px;}
+.chat-input-row{display:flex;gap:8px;align-items:flex-end;}
+.chat-input-row textarea{flex:1;min-height:44px;}
+
+.footer-note{padding:40px 0 60px;text-align:center;font-size:12px;color:var(--ink-faint);}
+.print-only{display:none;}
+@media print{ body>*:not(#printArea){display:none !important;} #printArea{display:block !important;padding:34px;font-family:Georgia,serif;color:#111;} }
+</style>
+</head>
+<body>
+
+<div id="printArea" class="print-only"></div>
+<div class="toast-host" id="toastHost"></div>
+<div id="fileWarningBanner" style="display:none;background:#B23B32;color:#fff;text-align:center;padding:12px 18px;font-size:13.5px;font-weight:600;position:sticky;top:0;z-index:100;">
+  ⚠️ Questa versione richiede che l'app sia pubblicata online (serve un server che protegga la chiave): apri l'app dall'indirizzo pubblicato (es. su Cloudflare Pages), non dal file sul computer. Vedi la guida allegata.
+</div>
+
+<!-- ============ SETTINGS MODAL ============ -->
+<div class="modal-overlay" id="settingsModal">
+  <div class="modal">
+    <button class="modal-close" onclick="closeSettings()">×</button>
+    <h3>Impostazioni</h3>
+    <p>La chiave Gemini è configurata in modo sicuro sul server e non è mai visibile né richiesta qui: non devi inserire nulla. Puoi solo scegliere il modello e verificare che tutto funzioni.</p>
+    <div class="field">
+      <label>Modello</label>
+      <select id="modelSelect">
+        <option value="gemini-2.5-flash">gemini-2.5-flash (consigliato)</option>
+        <option value="gemini-2.0-flash">gemini-2.0-flash</option>
+        <option value="gemini-1.5-flash">gemini-1.5-flash</option>
+      </select>
+    </div>
+    <div class="row-actions">
+      <button class="btn primary sm" onclick="saveModelChoice()">Salva</button>
+      <button class="btn ghost sm" onclick="testConnection()">🔌 Testa connessione</button>
+    </div>
+    <div class="muted" id="settingsStatus" style="margin-top:10px;"></div>
+  </div>
+</div>
+
+<!-- ============ STICKY NAV ============ -->
+<div class="nav" id="stickyNav">
+  <div class="nav-inner">
+    <div class="nav-brand">EDUPLAN</div>
+    <div class="nav-links" id="navLinks">
+      <a href="#sec2" data-target="sec2">PTOF</a>
+      <a href="#sec3" data-target="sec3" onclick="return navGuard('sec3', event)">Curricolo</a>
+      <a href="#sec4" data-target="sec4" onclick="return navGuard('sec4', event)">Classe</a>
+      <a href="#sec5" data-target="sec5" onclick="return navGuard('sec5', event)">Valutazione</a>
+      <a href="#sec6" data-target="sec6" onclick="return navGuard('sec6', event)">UDA</a>
+    </div>
+    <button class="gear-btn" onclick="openSettings()" title="Impostazioni">⚙</button>
+  </div>
+</div>
+
+<!-- ============ SEZIONE 1 — HERO ============ -->
+<section class="hero">
+  <div class="wrap">
+    <div class="eyebrow">Piattaforma IA per la scuola italiana</div>
+    <h1>EDU<span>PLAN</span></h1>
+    <p class="hero-sub">La Web App intelligente per i docenti italiani: genera curricoli d'istituto, programmazioni disciplinari e griglie di valutazione in piena conformità con le <strong>Nuove Indicazioni Nazionali 2025 (D.M. 221/2025)</strong> e le <strong>Indicazioni 2012 (D.M. 254/2012)</strong>, integrata con il PTOF della tua scuola e potenziata dall'intelligenza artificiale.</p>
+    <div class="badges-row"></div>
+    <button class="btn primary" onclick="startPlanning()">Inizia a progettare →</button>
+  </div>
+</section>
+
+<!-- ============ SEZIONE 2 — PTOF → PRIORITÀ ============ -->
+<section class="block" id="sec2">
+  <div class="wrap">
+    <div class="sec-eyebrow">Passo 1</div>
+    <h2 class="sec-title">Le priorità del tuo Istituto</h2>
+    <p class="sec-sub">Sulla base del PTOF caricato, la piattaforma seleziona le priorità dell'Istituto offrendo all'utente, prima di procedere, di modificarle.</p>
+
+    <div class="card">
+      <div style="display:flex;gap:14px;align-items:flex-start;flex-wrap:wrap;">
+        <span style="font-size:22px;">🔍</span>
+        <div>
+          <button class="btn ghost sm" onclick="window.open('https://unica.istruzione.gov.it/sic','_blank')">Cerca la scuola</button>
+          <p class="muted" style="margin-top:8px;max-width:600px;">Utilizza il motore di ricerca integrato per individuare il tuo istituto nel database nazionale MIUR dove reperire le informazioni istituzionali necessarie per personalizzare il curricolo in riferimento alle Nuove Indicazioni Nazionali e scaricare il PTOF.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3 style="font-size:16px;margin-bottom:14px;color:var(--brand-deep);">Carica il PTOF</h3>
+      <div class="dropzone" id="dropzonePtof">
+        <div><strong>Trascina qui il PTOF</strong> oppure clicca per selezionarlo<br><span class="muted">PDF, Word o testo</span></div>
+        <input type="file" id="ptofInput" accept=".pdf,.docx,.doc,.txt,.md" style="display:none;">
+      </div>
+      <div id="ptofChipHost"></div>
+      <div style="margin-top:14px;">
+        <button type="button" class="btn ghost sm" onclick="toggleManualPtof()">Il caricamento automatico non ha funzionato? Incolla il testo a mano</button>
+        <div class="field" id="manualPtofField" style="display:none;margin-top:10px;">
+          <label>Testo del PTOF</label>
+          <textarea id="ptofManualText" placeholder="…incolla qui il testo del PTOF"></textarea>
+        </div>
+      </div>
+
+      <div class="row-actions">
+        <button class="btn accent" id="btnGenPriorities" onclick="generatePriorities()">✦ Genera/visualizza priorità</button>
+        <span class="muted" id="prioritiesStatus"></span>
+      </div>
+
+      <div class="doc-toolbar"><strong style="font-size:13.5px;">Priorità generate</strong></div>
+      <div class="doc-preview" id="prioritiesPreview" data-placeholder="Le priorità generate dall'IA appariranno qui…"></div>
+      <div class="row-actions">
+        <button class="btn ghost sm" onclick="toggleEdit('prioritiesPreview','btnEditPriorities')" id="btnEditPriorities">✎ Modifica</button>
+        <button class="btn accent sm" onclick="saveSection('priorities','prioritiesPreview')">💾 Salva</button>
+        <button class="btn ghost sm" onclick="toggleChat('priorities')">💬 Chiedi modifiche all'IA</button>
+      </div>
+      <div class="ai-chat" id="chat-priorities">
+        <div class="chat-msgs" id="chatMsgs-priorities"></div>
+        <div class="chat-input-row">
+          <textarea id="chatInput-priorities" placeholder="Es. Aggiungi un riferimento più esplicito all'inclusione…"></textarea>
+          <button class="btn sm accent" onclick="sendChatRequest('priorities')">Invia</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ SEZIONE 3 — CURRICOLO VERTICALE D'ISTITUTO ============ -->
+<section class="block" id="sec3">
+  <div class="lock-overlay">
+    <span class="lock-icon">🔒</span>
+    <h4>Completa prima "Le priorità del tuo Istituto"</h4>
+    <p>Genera e salva le priorità nella sezione precedente per sbloccare il Curricolo d'Istituto.</p>
+    <button class="btn ghost sm" onclick="document.getElementById('sec2').scrollIntoView({behavior:'smooth'})">↑ Torna alla sezione precedente</button>
+  </div>
+  <div class="wrap">
+    <div class="sec-eyebrow">Passo 2</div>
+    <h2 class="sec-title">Dal PTOF al Curricolo</h2>
+    <p class="sec-sub">Sulla base del PTOF caricato e delle Indicazioni Nazionali applicabili, la piattaforma genera automaticamente il Curricolo Verticale d'Istituto, personalizzato sul contesto della tua scuola.</p>
+
+    <div class="card">
+      <div class="toggle-row" id="ordiniToggleRow">
+        <button class="toggle-card on" data-ord="infanzia" onclick="toggleOrdine(this,'infanzia')">
+          <span class="toggle-check"></span>
+          <h4>Scuola dell'Infanzia</h4>
+          <p>I cinque campi d'esperienza: Il sé e l'altro, Il corpo e il movimento, Immagini suoni colori, I discorsi e le parole, La conoscenza del mondo. Per ciascuno: finalità, competenze attese e OSA per fascia d'età.</p>
+        </button>
+        <button class="toggle-card on" data-ord="primaria" onclick="toggleOrdine(this,'primaria')">
+          <span class="toggle-check"></span>
+          <h4>Scuola Primaria</h4>
+          <p>Discipline con obiettivi al termine della classe 3ª e 5ª.</p>
+        </button>
+        <button class="toggle-card on" data-ord="secondaria" onclick="toggleOrdine(this,'secondaria')">
+          <span class="toggle-check"></span>
+          <h4>Secondaria di I grado</h4>
+          <p>Discipline complete con OSA, nuclei fondanti e competenze al termine della classe 3ª.</p>
+        </button>
+      </div>
+
+      <div class="row-actions">
+        <button class="btn accent" id="btnGenCurricolo" onclick="generateCurricolo()">✦ Genera / visualizza Anteprima</button>
+      </div>
+      <div class="muted" id="curricoloStatus" style="margin-top:8px;"></div>
+
+      <div class="doc-toolbar"><strong style="font-size:13.5px;">Curricolo Verticale d'Istituto</strong></div>
+      <div class="doc-preview" id="curricoloPreview" data-placeholder="Il curricolo generato apparirà qui, organizzato per ordine e disciplina…"></div>
+      <div class="row-actions">
+        <button class="btn ghost sm" onclick="toggleEdit('curricoloPreview','btnEditCurricolo')" id="btnEditCurricolo">✎ Modifica curricolo</button>
+        <button class="btn accent sm" onclick="saveSection('curricolo','curricoloPreview')">💾 Salva</button>
+        <button class="btn primary sm" onclick="downloadDoc('Curricolo_Istituto','curricoloPreview')">⬇ Scarica curricolo</button>
+        <button class="btn ghost sm" onclick="toggleChat('curricolo')">💬 Chiedi modifiche all'IA</button>
+      </div>
+      <div class="ai-chat" id="chat-curricolo">
+        <div class="chat-msgs" id="chatMsgs-curricolo"></div>
+        <div class="chat-input-row">
+          <textarea id="chatInput-curricolo" placeholder="Es. Approfondisci di più la parte di Scienze…"></textarea>
+          <button class="btn sm accent" onclick="sendChatRequest('curricolo')">Invia</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ SEZIONE 4 — CLASSE, DISCIPLINA, PROGRAMMAZIONE ============ -->
+<section class="block" id="sec4">
+  <div class="lock-overlay">
+    <span class="lock-icon">🔒</span>
+    <h4>Completa prima "Dal PTOF al Curricolo"</h4>
+    <p>Genera e salva il Curricolo d'Istituto nella sezione precedente per sbloccare questa fase.</p>
+    <button class="btn ghost sm" onclick="document.getElementById('sec3').scrollIntoView({behavior:'smooth'})">↑ Torna alla sezione precedente</button>
+  </div>
+  <div class="wrap">
+    <div class="sec-eyebrow">Passo 3</div>
+    <h2 class="sec-title">Scegli ordine e grado</h2>
+    <p class="sec-sub">Questa fase del processo progettuale consiste nell'individuare l'ordine e il grado di scuola di riferimento. Questa scelta determina automaticamente i campi d'esperienza o le discipline disponibili e il framework normativo applicabile.</p>
+
+    <div class="card">
+      <div class="dropdown-row">
+        <div class="order-box" id="box-infanzia">
+          <h5>Scuola dell'Infanzia</h5>
+          <select onchange="selectClasse('infanzia', this)">
+            <option value="">— Seleziona —</option>
+            <option value="inf1">3–4 anni</option>
+            <option value="inf2">4–5 anni</option>
+            <option value="inf3">5–6 anni</option>
+          </select>
+        </div>
+        <div class="order-box" id="box-primaria">
+          <h5>Scuola Primaria</h5>
+          <select onchange="selectClasse('primaria', this)">
+            <option value="">— Seleziona —</option>
+            <option value="p1">Classe 1ª</option>
+            <option value="p2">Classe 2ª</option>
+            <option value="p3">Classe 3ª</option>
+            <option value="p4">Classe 4ª</option>
+            <option value="p5">Classe 5ª</option>
+          </select>
+        </div>
+        <div class="order-box" id="box-secondaria">
+          <h5>Secondaria di I grado</h5>
+          <select onchange="selectClasse('secondaria', this)">
+            <option value="">— Seleziona —</option>
+            <option value="s1">Classe 1ª</option>
+            <option value="s2">Classe 2ª</option>
+            <option value="s3">Classe 3ª</option>
+          </select>
+        </div>
+      </div>
+      <div class="note-box" style="margin-top:18px;">
+        <strong>Filtro automatico D.M. 221/2025:</strong> se selezioni la <strong>Classe Prima</strong> (primaria o secondaria) o una sezione dell'infanzia, l'app applica obbligatoriamente le Nuove Indicazioni Nazionali 2025, integrandole con il PTOF caricato e il curricolo generato in precedenza. Per tutte le altre classi vengono applicate le Indicazioni 2012.
+      </div>
+      <div class="row-actions" id="frameworkIndicator" style="margin-top:14px;"></div>
+    </div>
+
+    <div class="card" id="disciplinaCard" style="display:none;">
+      <h3 style="font-size:20px;color:var(--brand-deep);margin-bottom:8px;">Dalle conoscenze alle competenze</h3>
+      <p class="sec-sub" style="margin-bottom:20px;" id="disciplinaIntro">Dopo aver generato il curricolo, scegli la disciplina su cui lavorare. Il sistema mostra l'elenco completo delle materie disponibili per l'ordine e il grado selezionato, con contenuti e conoscenze differenziati per classe. La programmazione disciplinare integra le Indicazioni Nazionali (nuove o precedenti) con il curricolo d'istituto personalizzato e il contesto classe.</p>
+
+      <button class="btn ghost" onclick="toggleDisciplinePanel()">📚 Scegli la disciplina</button>
+      <div class="chip-panel" id="disciplinePanel"></div>
+
+      <h3 style="font-size:18px;color:var(--brand-deep);margin:30px 0 8px;">Verso una classe inclusiva</h3>
+      <p class="sec-sub" style="margin-bottom:14px;">Ogni metodologia, strategia e strumento deve essere calibrato sul contesto classe e sulla disciplina selezionata: ciò determina il successo formativo di ciascuno studente.</p>
+      <div class="field">
+        <label>Descrizione della classe (inclusi eventuali alunni BES)</label>
+        <textarea id="contestoClasse" placeholder="Es. Classe di 20 alunni con buon clima relazionale; presente un alunno con DSA (dislessia) con PDP attivo che utilizza mappe concettuali e sintesi vocale; un'alunna con background migratorio in fase di alfabetizzazione dell'italiano L2; disponibilità di un laboratorio informatico due ore a settimana."></textarea>
+      </div>
+
+      <div class="row-actions">
+        <button class="btn accent" id="btnGenProgrammazione" onclick="generateProgrammazione()">✦ Genera / visualizza Anteprima</button>
+      </div>
+      <div class="muted" id="programmazioneStatus" style="margin-top:8px;"></div>
+
+      <div class="doc-toolbar"><strong style="font-size:13.5px;">Programmazione disciplinare</strong></div>
+      <div class="doc-preview" id="programmazionePreview" data-placeholder="La programmazione generata dall'IA apparirà qui…"></div>
+      <div class="row-actions">
+        <button class="btn ghost sm" onclick="toggleEdit('programmazionePreview','btnEditProgrammazione')" id="btnEditProgrammazione">✎ Modifica curricolo</button>
+        <button class="btn accent sm" onclick="saveSection('programmazione','programmazionePreview')">💾 Salva</button>
+        <button class="btn primary sm" onclick="downloadDoc('Programmazione_Disciplinare','programmazionePreview')">⬇ Salva e scarica curricolo</button>
+        <button class="btn ghost sm" onclick="toggleChat('programmazione')">💬 Chiedi modifiche all'IA</button>
+      </div>
+      <div class="ai-chat" id="chat-programmazione">
+        <div class="chat-msgs" id="chatMsgs-programmazione"></div>
+        <div class="chat-input-row">
+          <textarea id="chatInput-programmazione" placeholder="Es. Aggiungi più attività laboratoriali…"></textarea>
+          <button class="btn sm accent" onclick="sendChatRequest('programmazione')">Invia</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ SEZIONE 5 — VALUTAZIONE ============ -->
+<section class="block" id="sec5">
+  <div class="lock-overlay">
+    <span class="lock-icon">🔒</span>
+    <h4>Completa prima la Programmazione disciplinare</h4>
+    <p>Genera e salva la programmazione nella sezione precedente per sbloccare la Valutazione.</p>
+    <button class="btn ghost sm" onclick="document.getElementById('sec4').scrollIntoView({behavior:'smooth'})">↑ Torna alla sezione precedente</button>
+  </div>
+  <div class="wrap">
+    <div class="sec-eyebrow">Passo 4</div>
+    <h2 class="sec-title">Valutazione</h2>
+    <p class="sec-sub">La valutazione non è solo sommativa. La piattaforma genera sei tipologie di valutazione coerenti con le Indicazioni Nazionali, ciascuna con griglie, descrittori e indicatori osservabili, personalizzati su contesto, classe e disciplina. Gli strumenti favoriscono un processo trasparente e condiviso con studenti e famiglie.</p>
+
+    <div class="card">
+      <div class="eval-row">
+        <div class="eval-card on" data-tipo="diagnostica" onclick="toggleValutazione(this,'diagnostica')">
+          <h5>Diagnostica</h5><p>Rileva prerequisiti e conoscenze pregresse all'inizio del percorso. Strumenti: test d'ingresso, questionari, osservazione sistematica.</p>
+        </div>
+        <div class="eval-card on" data-tipo="formativa" onclick="toggleValutazione(this,'formativa')">
+          <h5>Formativa in Itinere</h5><p>Monitoraggio continuo con feedback tempestivo. Rubriche di osservazione, diari di bordo, portfolio delle competenze.</p>
+        </div>
+        <div class="eval-card on" data-tipo="metacognitiva" onclick="toggleValutazione(this,'metacognitiva')">
+          <h5>Metacognitiva</h5><p>Sviluppa la consapevolezza dei propri processi di apprendimento. Domande guida, journaling, mappe di autoregolazione.</p>
+        </div>
+      </div>
+      <div class="eval-row">
+        <div class="eval-card on" data-tipo="iniziale" onclick="toggleValutazione(this,'iniziale')">
+          <h5>Iniziale</h5><p>Definisce il punto di partenza e calibra gli obiettivi. Griglie di rilevazione delle competenze di base per classe e disciplina.</p>
+        </div>
+        <div class="eval-card on" data-tipo="autovalutativa" onclick="toggleValutazione(this,'autovalutativa')">
+          <h5>Autovalutativa</h5><p>Strumenti per l'autovalutazione dello studente. Schede di riflessione, check-list, scale di percezione delle competenze.</p>
+        </div>
+        <div class="eval-card on" data-tipo="finale" onclick="toggleValutazione(this,'finale')">
+          <h5>Finale</h5><p>Accertamento dei risultati al termine del percorso. Griglie con descrittori per livelli di competenza, voti e giudizi.</p>
+        </div>
+      </div>
+    </div>
+
+    <h3 style="font-size:22px;color:var(--brand-deep);margin:34px 0 8px;">Griglie Valutative</h3>
+    <p class="sec-sub" style="margin-bottom:22px;">Ogni griglia valutativa è generata automaticamente tenendo conto del contesto classe, della disciplina e delle attività previste. I descrittori trasformano concetti teorici in elementi operativi e osservabili, rendendo leggibile il percorso di apprendimento. È possibile modificare, salvare e interagire con l'IA per affinare ciascuno strumento.</p>
+
+    <div class="required-grid">
+      <div class="card">
+        <h4 style="font-size:14.5px;color:var(--brand-deep);margin-bottom:12px;">Struttura di Ogni Griglia</h4>
+        <ul class="info-list">
+          <li>Indicatori selezionati per disciplina e attività specifica</li>
+          <li>Descrittori per livelli (Iniziale, Base, Intermedio, Avanzato)</li>
+          <li>Criteri intersoggettivi per giudizi valutativi trasparenti</li>
+          <li>Adattamento al contesto classe e PTOF dell'istituto</li>
+          <li>Condivisione con studenti e famiglie</li>
+        </ul>
+        <div class="note-box" style="margin-top:16px;">💡 Interazione con l'IA: dopo la generazione, puoi chiedere all'IA di modificare descrittori, aggiungere indicatori o adattare la griglia a specifici alunni BES.</div>
+      </div>
+      <div class="card">
+        <h4 style="font-size:14.5px;color:var(--brand-deep);margin-bottom:12px;">Collegamento a OSA e competenze chiave</h4>
+        <p style="font-size:13px;color:var(--ink-soft);line-height:1.55;margin-bottom:16px;">Ogni griglia è collegata agli OSA della programmazione e alle competenze chiave europee (D.M. 14/2024).</p>
+        <div class="field">
+          <label>Attività/percorso da valutare (facoltativo)</label>
+          <textarea id="attivitaValutazione" placeholder="Descrivi brevemente l'attività su cui costruire le griglie…" style="min-height:70px;"></textarea>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:20px;">
+      <div class="row-actions">
+        <button class="btn accent" id="btnGenValutazione" onclick="generateValutazione()">✦ Genera / visualizza Anteprima</button>
+      </div>
+      <div class="muted" id="valutazioneStatus" style="margin-top:8px;"></div>
+      <div class="doc-toolbar"><strong style="font-size:13.5px;">Griglie generate</strong></div>
+      <div class="doc-preview" id="valutazionePreview" data-placeholder="Le griglie di valutazione generate dall'IA appariranno qui…"></div>
+      <div class="row-actions">
+        <button class="btn ghost sm" onclick="toggleEdit('valutazionePreview','btnEditValutazione')" id="btnEditValutazione">✎ Modifica</button>
+        <button class="btn accent sm" onclick="saveSection('valutazione','valutazionePreview')">💾 Salva</button>
+        <button class="btn primary sm" onclick="downloadDoc('Griglie_Valutazione','valutazionePreview')">⬇ Salva e scarica</button>
+        <button class="btn ghost sm" onclick="toggleChat('valutazione')">💬 Chiedi modifiche all'IA</button>
+      </div>
+      <div class="ai-chat" id="chat-valutazione">
+        <div class="chat-msgs" id="chatMsgs-valutazione"></div>
+        <div class="chat-input-row">
+          <textarea id="chatInput-valutazione" placeholder="Es. Adatta la griglia Formativa all'alunno con DSA…"></textarea>
+          <button class="btn sm accent" onclick="sendChatRequest('valutazione')">Invia</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ SEZIONE 6 — PROGETTAZIONE UDA ============ -->
+<section class="block" id="sec6">
+  <div class="lock-overlay">
+    <span class="lock-icon">🔒</span>
+    <h4>Completa prima la Valutazione</h4>
+    <p>Genera e salva le griglie valutative nella sezione precedente per sbloccare la Progettazione UDA.</p>
+    <button class="btn ghost sm" onclick="document.getElementById('sec5').scrollIntoView({behavior:'smooth'})">↑ Torna alla sezione precedente</button>
+  </div>
+  <div class="wrap">
+    <div class="sec-eyebrow">Passo 5</div>
+    <h2 class="sec-title">Progettazione UDA</h2>
+    <p class="sec-sub">Ogni programmazione disciplinare include: <strong>Contesto classe</strong> (descrizione del gruppo, prerequisiti e clima di apprendimento), <strong>Conoscenze</strong> (selezionate per rilevanza culturale, significatività scientifica ed essenzialità formativa), <strong>Obiettivi e Competenze</strong> (OSA coerenti con le Competenze Chiave — D.M. 14/2024), <strong>Metodologie e Strategie</strong> (approcci didattici differenziati per stile di apprendimento), <strong>Strumenti e Risorse</strong> (materiali, tecnologie e ambienti di apprendimento).</p>
+
+    <div class="note-box" style="margin-bottom:26px;">Le quattro domande-guida della progettazione: <strong>Quali obiettivi? Quali esperienze? Come organizzarle? Come accertare i risultati?</strong></div>
+
+    <div class="card">
+      <div class="required-grid">
+        <div class="field">
+          <label>Discipline coinvolte <span class="req">*</span></label>
+          <input type="text" id="udaDiscipline" placeholder="Es. Italiano, Storia, Arte e Immagine">
+        </div>
+        <div class="field">
+          <label>Competenza chiave europea prediletta <span class="req">*</span></label>
+          <select id="udaCompetenza">
+            <option value="">— Seleziona —</option>
+            <option>Competenza alfabetica funzionale</option>
+            <option>Competenza multilinguistica</option>
+            <option>Competenza matematica e competenza in scienze, tecnologie e ingegneria</option>
+            <option>Competenza digitale</option>
+            <option>Competenza personale, sociale e capacità di imparare a imparare</option>
+            <option>Competenza in materia di cittadinanza</option>
+            <option>Competenza imprenditoriale</option>
+            <option>Competenza in materia di consapevolezza ed espressione culturali</option>
+          </select>
+        </div>
+      </div>
+      <div class="field" style="margin-bottom:16px;">
+        <label>Alunni BES: quanto dichiarato nel PEI o nel PDP (se presenti)</label>
+        <textarea id="udaBes" placeholder="Es. Alunno con PDP per DSA: strumenti compensativi (mappe, sintesi vocale), misure dispensative su lettura ad alta voce…" style="min-height:70px;"></textarea>
+      </div>
+      <div class="field" style="margin-bottom:16px;">
+        <label>Cosa vuoi chiedere all'IA <span class="req">*</span></label>
+        <textarea id="udaRichiesta" placeholder="Descrivi il percorso che vuoi progettare, seguendo le quattro domande guida: quali obiettivi, quali esperienze, come organizzarle, come accertare i risultati…"></textarea>
+      </div>
+
+      <div class="row-actions">
+        <button class="btn accent" id="btnGenUda" onclick="generateUda()">✦ Genera / visualizza Anteprima</button>
+      </div>
+      <div class="muted" id="udaStatus" style="margin-top:8px;"></div>
+
+      <div class="doc-toolbar"><strong style="font-size:13.5px;">Progettazione UDA</strong></div>
+      <div class="doc-preview" id="udaPreview" data-placeholder="La progettazione UDA generata dall'IA apparirà qui…"></div>
+      <div class="row-actions">
+        <button class="btn ghost sm" onclick="toggleEdit('udaPreview','btnEditUda')" id="btnEditUda">✎ Modifica progettazione</button>
+        <button class="btn accent sm" onclick="saveSection('uda','udaPreview')">💾 Salva</button>
+        <button class="btn primary sm" onclick="downloadDoc('Progettazione_UDA','udaPreview')">⬇ Salva e scarica UDA</button>
+        <button class="btn ghost sm" onclick="toggleChat('uda')">💬 Chiedi modifiche all'IA</button>
+      </div>
+      <div class="ai-chat" id="chat-uda">
+        <div class="chat-msgs" id="chatMsgs-uda"></div>
+        <div class="chat-input-row">
+          <textarea id="chatInput-uda" placeholder="Es. Aggiungi una fase di lavoro cooperativo a gruppi…"></textarea>
+          <button class="btn sm accent" onclick="sendChatRequest('uda')">Invia</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="footer-note">EDUPLAN — strumento di supporto alla progettazione didattica · Riferimenti: D.M. 254/2012, D.M. 221/2025, D.M. 14/2024</div>
+
+<script>
+/* =====================================================================
+   COSTANTI E BASE DI CONOSCENZA NORMATIVA (grounding per l'IA)
+   ===================================================================== */
+const ORDINI = {
+  infanzia:{label:"Scuola dell'Infanzia", classi:{inf1:'3–4 anni', inf2:'4–5 anni', inf3:'5–6 anni'}},
+  primaria:{label:"Scuola Primaria", classi:{p1:'Classe 1ª',p2:'Classe 2ª',p3:'Classe 3ª',p4:'Classe 4ª',p5:'Classe 5ª'}},
+  secondaria:{label:"Secondaria di I grado", classi:{s1:'Classe 1ª',s2:'Classe 2ª',s3:'Classe 3ª'}}
+};
+const DISCIPLINE = {
+  infanzia:["Il sé e l'altro","Il corpo e il movimento","Immagini, suoni, colori","I discorsi e le parole","La conoscenza del mondo"],
+  primaria:["Italiano","Lingua Inglese","Storia","Geografia","Matematica","Scienze","Musica","Arte e Immagine","Educazione Fisica","Tecnologia","Educazione Civica"],
+  secondaria:["Italiano","Lingua Inglese","Seconda Lingua Comunitaria","Storia","Geografia","Matematica","Scienze","Musica","Arte e Immagine","Educazione Fisica","Tecnologia","Educazione Civica"]
+};
+const SINTESI_2012 = {
+  "Italiano":"Fine primaria: partecipa a scambi comunicativi, legge e comprende testi vari, scrive testi corretti e coerenti, amplia il lessico. Fine secondaria: interagisce in modo efficace, usa manuali e fonti diverse, scrive testi adeguati a scopo/destinatario, padroneggia lessico e strutture morfosintattiche.",
+  "Lingua Inglese":"Fine primaria: livello A1 QCER. Fine secondaria: livello A2 QCER, comprende testi su argomenti familiari, interagisce con uno o più interlocutori.",
+  "Seconda Lingua Comunitaria":"Fine secondaria: livello A1 QCER, comunica in scambi semplici su argomenti familiari.",
+  "Storia":"Fine primaria: usa fonti e linea del tempo, quadri di civiltà dal Paleolitico alla fine del mondo antico. Fine secondaria: processi storici italiani/europei/mondiali dal Medioevo a oggi, focus sul Novecento in terza.",
+  "Geografia":"Fine primaria: si orienta con carte e punti cardinali, riconosce paesaggi. Fine secondaria: legge carte a diversa scala, analizza sistemi territoriali e impatto delle azioni umane.",
+  "Matematica":"Fine primaria: calcolo scritto/mentale sicuro, forme geometriche, problemi. Fine secondaria: calcolo con razionali, linguaggio matematico, argomenta e dimostra.",
+  "Scienze":"Fine primaria: approccio scientifico, osservazione, esperimenti semplici. Fine secondaria: schematizzazioni e modelli, fisica/chimica/scienze della terra/biologia con laboratorio.",
+  "Musica":"Fine primaria: esplora e produce eventi sonori. Fine secondaria: esegue e interpreta brani, usa notazione, elabora eventi musicali.",
+  "Arte e Immagine":"Fine primaria: produce e legge immagini, apprezza opere d'arte. Fine secondaria: elaborati personali, legge opere nei contesti storico-culturali, tutela il patrimonio.",
+  "Educazione Fisica":"Fine primaria: schemi motori, gioco-sport, fair play. Fine secondaria: abilità sportive specifiche, gestione competitiva, stili di vita sani.",
+  "Tecnologia":"Fine primaria: riconosce oggetti/processi tecnologici. Fine secondaria: analizza sistemi tecnologici, progetta semplici prodotti, uso critico dei media.",
+  "Educazione Civica":"Trasversale: Costituzione, cittadinanza attiva, legalità, sviluppo sostenibile, educazione digitale (L. 92/2019).",
+  "Il sé e l'altro":"Identità, autonomia, regole del vivere insieme, prime domande di senso.",
+  "Il corpo e il movimento":"Consapevolezza corporea, autonomia nella gestione della giornata, gioco motorio.",
+  "Immagini, suoni, colori":"Espressione creativa, linguaggi artistici e multimediali, paesaggio sonoro.",
+  "I discorsi e le parole":"Padronanza della lingua italiana, ascolto, narrazione, avvicinamento alla lingua scritta.",
+  "La conoscenza del mondo":"Esplorazione, numero e spazio, oggetti/fenomeni/viventi, prime classificazioni."
+};
+const SINTESI_2025 = "Le Nuove Indicazioni Nazionali 2025 (D.M. 221/2025) si fondano su cinque pilastri: (1) Didattica ed Empatia — educazione alle relazioni e ai sentimenti per prevenire la violenza contro le donne; (2) Inclusione e Accoglienza — pieno supporto agli alunni con background migratorio, con misure specifiche per la loro integrazione; (3) Alleanza Educativa — nuovo patto di corresponsabilità tra istituzioni scolastiche e famiglia; (4) Innovazione e Competenze — forte attenzione all'educazione ambientale, all'innovazione tecnologica e alla media literacy; (5) Cambiamenti disciplinari — per la scuola primaria, in Storia il focus è sulle origini della civiltà occidentale; per la secondaria, si rafforzano l'alfabetizzazione visiva, lo studio del patrimonio artistico e le competenze digitali. Per ciascuna disciplina le Nuove Indicazioni richiedono di esplicitare 'perché si studia la disciplina', i riferimenti culturali, e obiettivi/competenze/conoscenze coerenti con le Competenze Chiave europee (D.M. 14/2024).";
+
+/* =====================================================================
+   STATO E PERSISTENZA (window.storage se disponibile, altrimenti localStorage)
+   ===================================================================== */
+const HAS_WS = (typeof window.storage !== 'undefined');
+async function stGet(key){
+  try{ if(HAS_WS){ const r = await window.storage.get(key,false); return r ? r.value : null; } }catch(e){}
+  try{ return window.localStorage.getItem(key); }catch(e){ return null; }
+}
+async function stSet(key,value){
+  try{ if(HAS_WS){ await window.storage.set(key,value,false); return; } }catch(e){}
+  try{ window.localStorage.setItem(key,value); }catch(e){}
+}
+
+let state = {
+  model:'gemini-2.5-flash',
+  ptof:{fileName:'', text:'', manualText:''},
+  priorities:'', curricolo:'', programmazione:'', valutazione:'', uda:'',
+  selection:{ordine:'', classe:'', disciplina:''},
+  ordiniAttivi:{infanzia:true, primaria:true, secondaria:true},
+  valutazioneTipi:{diagnostica:true, iniziale:true, formativa:true, autovalutativa:true, metacognitiva:true, finale:true},
+  completed:{priorities:false, curricolo:false, programmazione:false, valutazione:false, uda:false}
+};
+async function loadState(){
+  const raw = await stGet('eduplan-state');
+  if(raw){ try{ state = Object.assign(state, JSON.parse(raw)); if(!state.completed) state.completed={priorities:false,curricolo:false,programmazione:false,valutazione:false,uda:false}; }catch(e){} }
+}
+async function saveState(){ await stSet('eduplan-state', JSON.stringify(state)); }
+
+/* =====================================================================
+   TOAST
+   ===================================================================== */
+function toast(msg, opts={}){
+  const host = document.getElementById('toastHost');
+  const el = document.createElement('div');
+  el.className = 'toast' + (opts.err?' err':'') + (opts.ok?' ok':'');
+  el.innerHTML = (opts.loading?'<span class="spinner"></span>':'') + '<span>'+msg+'</span>';
+  host.appendChild(el);
+  if(!opts.sticky) setTimeout(()=>el.remove(), opts.duration||3400);
+  return el;
+}
+
+/* =====================================================================
+   NAV / SCROLL / GATING SEQUENZIALE
+   ===================================================================== */
+window.addEventListener('scroll', ()=>{
+  document.getElementById('stickyNav').classList.toggle('show', window.scrollY > window.innerHeight*0.6);
+});
+function startPlanning(){ document.getElementById('sec2').scrollIntoView({behavior:'smooth'}); }
+
+const GATES = [
+  {section:'sec3', requires:'priorities'},
+  {section:'sec4', requires:'curricolo'},
+  {section:'sec5', requires:'programmazione'},
+  {section:'sec6', requires:'valutazione'}
+];
+function updateGates(){
+  GATES.forEach(g=>{
+    const el = document.getElementById(g.section);
+    const done = !!state.completed[g.requires];
+    el.classList.toggle('locked', !done);
+    const navLink = document.querySelector('.nav-links a[data-target="'+g.section+'"]');
+    if(navLink) navLink.classList.toggle('is-locked', !done);
+  });
+}
+function navGuard(sectionId, ev){
+  const el = document.getElementById(sectionId);
+  if(el.classList.contains('locked')){
+    ev.preventDefault();
+    toast('Completa e salva la sezione precedente per sbloccare questa.', {err:true});
+    return false;
+  }
+  return true;
+}
+
+/* =====================================================================
+   SETTINGS MODAL
+   ===================================================================== */
+function openSettings(){
+  document.getElementById('modelSelect').value = state.model || 'gemini-2.5-flash';
+  document.getElementById('settingsStatus').textContent = '';
+  document.getElementById('settingsModal').classList.add('show');
+}
+function closeSettings(){ document.getElementById('settingsModal').classList.remove('show'); }
+async function saveModelChoice(){
+  state.model = document.getElementById('modelSelect').value;
+  await saveState();
+  document.getElementById('settingsStatus').textContent = 'Salvato ✓';
+}
+async function testConnection(){
+  const status = document.getElementById('settingsStatus');
+  status.textContent = 'Test in corso…';
+  try{
+    const res = await fetch('/generate');
+    const data = await res.json().catch(()=>({}));
+    if(!res.ok){
+      status.textContent = '❌ '+(data.error || ('Errore '+res.status));
+      return;
+    }
+    status.textContent = '✅ Il server e la chiave funzionano correttamente.';
+  }catch(e){
+    status.textContent = window.location.protocol==='file:'
+      ? '❌ Stai aprendo il file dal computer: questa versione funziona solo una volta pubblicata online (vedi guida).'
+      : '❌ Impossibile contattare il server dell\'app: '+e.message;
+  }
+}
+
+/* =====================================================================
+   LETTURA FILE (PDF / DOCX / TXT)
+   ===================================================================== */
+async function setupPdfWorker(){
+  if(!window['pdfjsLib']) return;
+  try{
+    const resp = await fetch('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js');
+    const code = await resp.text();
+    const blob = new Blob([code], {type:'application/javascript'});
+    pdfjsLib.GlobalWorkerOptions.workerSrc = URL.createObjectURL(blob);
+  }catch(e){
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+  }
+}
+async function extractPdfText(file){
+  const buf = await file.arrayBuffer();
+  const pdf = await pdfjsLib.getDocument({data:buf}).promise;
+  let out='';
+  const maxPages = Math.min(pdf.numPages,40);
+  for(let i=1;i<=maxPages;i++){
+    const page = await pdf.getPage(i);
+    const content = await page.getTextContent();
+    out += content.items.map(it=>it.str).join(' ') + '\n';
+  }
+  return out;
+}
+async function extractDocxText(file){
+  const buf = await file.arrayBuffer();
+  const result = await mammoth.extractRawText({arrayBuffer:buf});
+  return result.value || '';
+}
+async function readAnyFile(file){
+  const ext = (file.name.split('.').pop()||'').toLowerCase();
+  try{
+    if(ext==='pdf') return await extractPdfText(file);
+    if(ext==='docx'||ext==='doc') return await extractDocxText(file);
+    return await file.text();
+  }catch(e){
+    toast('Non sono riuscito a leggere "'+file.name+'": incolla il testo manualmente.', {err:true});
+    return '';
+  }
+}
+const dz = document.getElementById('dropzonePtof');
+const ptofInput = document.getElementById('ptofInput');
+dz.addEventListener('click', ()=>ptofInput.click());
+['dragenter','dragover'].forEach(ev=>dz.addEventListener(ev,e=>{e.preventDefault();dz.classList.add('drag');}));
+['dragleave','drop'].forEach(ev=>dz.addEventListener(ev,e=>{e.preventDefault();dz.classList.remove('drag');}));
+dz.addEventListener('drop', e=>{ if(e.dataTransfer.files.length) handlePtofFile(e.dataTransfer.files[0]); });
+ptofInput.addEventListener('change', e=>{ if(e.target.files.length) handlePtofFile(e.target.files[0]); });
+async function handlePtofFile(file){
+  const t = toast('Lettura del PTOF in corso…', {loading:true, sticky:true});
+  const text = await readAnyFile(file);
+  t.remove();
+  state.ptof.fileName = file.name; state.ptof.text = text;
+  await saveState();
+  document.getElementById('ptofChipHost').innerHTML = `<div class="file-chip">📎 ${file.name} <button onclick="clearPtofFile()">×</button></div>`;
+  toast('PTOF caricato ('+Math.round(text.length/1000)+' mila caratteri estratti).', {ok:true});
+}
+function clearPtofFile(){ state.ptof.fileName=''; state.ptof.text=''; document.getElementById('ptofChipHost').innerHTML=''; saveState(); }
+function toggleManualPtof(){
+  const f = document.getElementById('manualPtofField');
+  f.style.display = (f.style.display==='none') ? 'block':'none';
+}
+document.getElementById('ptofManualText').addEventListener('input', e=>{ state.ptof.manualText = e.target.value; saveState(); });
+
+/* =====================================================================
+   CHIAMATA AL BACKEND (funzione serverless — la chiave resta sul server)
+   ===================================================================== */
+async function callBackend(systemInstruction, userText, maxOutputTokens=3000){
+  let res;
+  try{
+    res = await fetch('/generate', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({systemInstruction, userText, maxOutputTokens, model: state.model})
+    });
+  }catch(networkErr){
+    if(window.location.protocol === 'file:'){
+      throw new Error("Questa versione richiede che l'app sia pubblicata online (serve un server per proteggere la chiave): apri l'app dall'indirizzo pubblicato, non dal file sul computer.");
+    }
+    throw new Error("Impossibile contattare il server dell'app. Riprova tra poco. Dettaglio: "+networkErr.message);
+  }
+  let data;
+  try{ data = await res.json(); }catch(e){ throw new Error('Risposta non valida dal server ('+res.status+').'); }
+  if(!res.ok){
+    throw new Error(data && data.error ? data.error : ('Errore del server ('+res.status+').'));
+  }
+  if(!data.text || !data.text.trim()){ throw new Error('Il server ha restituito una risposta vuota.'); }
+  return data.text;
+}
+function escapeHtml(s){ const d=document.createElement('div'); d.innerText=s; return d.innerHTML; }
+
+/* =====================================================================
+   EDIT / SAVE / DOWNLOAD COMUNI
+   ===================================================================== */
+function toggleEdit(previewId, btnId){
+  const el = document.getElementById(previewId);
+  const editing = el.getAttribute('contenteditable') === 'true';
+  el.setAttribute('contenteditable', editing ? 'false':'true');
+  const labels = {btnEditPriorities:'✎ Modifica', btnEditCurricolo:'✎ Modifica curricolo', btnEditProgrammazione:'✎ Modifica curricolo', btnEditValutazione:'✎ Modifica', btnEditUda:'✎ Modifica progettazione'};
+  document.getElementById(btnId).textContent = editing ? labels[btnId] : '✓ Fine modifica';
+  if(!editing) el.focus();
+}
+async function saveSection(key, previewId){
+  const text = document.getElementById(previewId).innerText;
+  if(!text || !text.trim()){ toast('Non c\'è ancora nulla da salvare: genera prima il contenuto.', {err:true}); return; }
+  state[key] = text;
+  if(state.completed.hasOwnProperty(key)){
+    const wasLocked = !state.completed[key];
+    state.completed[key] = true;
+    await saveState();
+    updateGates();
+    toast(wasLocked ? 'Salvato — sezione successiva sbloccata ✓' : 'Salvato.', {ok:true});
+  }else{
+    await saveState();
+    toast('Salvato.', {ok:true});
+  }
+}
+function downloadDoc(filename, previewId){
+  const text = document.getElementById(previewId).innerText;
+  if(!text || !text.trim()){ toast('Genera prima il contenuto.', {err:true}); return; }
+  const pre = "<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'><head><meta charset='utf-8'><title>"+filename+"</title></head><body><div style=\"font-family:Georgia,serif;font-size:13px;line-height:1.6;white-space:pre-wrap;\">"+escapeHtml(text)+"</div></body></html>";
+  const blob = new Blob(['\ufeff', pre], {type:'application/msword'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href=url; a.download=filename+'.doc'; a.click();
+  URL.revokeObjectURL(url);
+}
+
+/* =====================================================================
+   CHAT IA RIUTILIZZABILE PER OGNI SEZIONE
+   ===================================================================== */
+const chatHistory = {priorities:[], curricolo:[], programmazione:[], valutazione:[], uda:[]};
+const PREVIEW_BY_KEY = {priorities:'prioritiesPreview', curricolo:'curricoloPreview', programmazione:'programmazionePreview', valutazione:'valutazionePreview', uda:'udaPreview'};
+function toggleChat(key){
+  document.getElementById('chat-'+key).classList.toggle('show');
+}
+function renderChatMsgs(key){
+  const host = document.getElementById('chatMsgs-'+key);
+  host.innerHTML = chatHistory[key].map(m=>`<div class="msg ${m.role}">${escapeHtml(m.text)}</div>`).join('') || '<span class="muted">Nessun messaggio ancora.</span>';
+  host.scrollTop = host.scrollHeight;
+}
+async function sendChatRequest(key){
+  const input = document.getElementById('chatInput-'+key);
+  const text = input.value.trim();
+  if(!text) return;
+  const previewId = PREVIEW_BY_KEY[key];
+  const current = document.getElementById(previewId).innerText;
+  if(!current || !current.trim()){ toast('Genera prima il contenuto di questa sezione.', {err:true}); return; }
+  input.value='';
+  chatHistory[key].push({role:'user', text});
+  renderChatMsgs(key);
+  const t = toast('Aggiornamento in corso…', {loading:true, sticky:true});
+  try{
+    const system = "Sei un assistente di progettazione didattica per la scuola italiana. L'utente ti mostra un documento già generato e ti chiede una modifica o un'integrazione. Restituisci SOLO la versione aggiornata e completa del documento (mai un riassunto delle modifiche, mai premesse), in italiano, mantenendo la struttura a titoli e punti elenco.";
+    const user = "DOCUMENTO ATTUALE:\n"+current+"\n\nRICHIESTA DELL'UTENTE:\n"+text;
+    const out = await callBackend(system, user, 6000);
+    document.getElementById(previewId).innerText = out;
+    chatHistory[key].push({role:'ai', text:'Documento aggiornato secondo la richiesta.'});
+    toast('Documento aggiornato. Ricordati di premere "Salva" per confermarlo.', {ok:true});
+  }catch(e){
+    chatHistory[key].push({role:'ai', text:'Errore: '+e.message});
+  }finally{
+    t.remove();
+    renderChatMsgs(key);
+  }
+}
+
+/* =====================================================================
+   SEZIONE 2 — PRIORITÀ
+   ===================================================================== */
+async function generatePriorities(){
+  const src = state.ptof.text || state.ptof.manualText;
+  if(!src){ toast('Allega o incolla prima il testo del PTOF.', {err:true}); return; }
+  const btn = document.getElementById('btnGenPriorities'); btn.disabled=true;
+  document.getElementById('prioritiesStatus').textContent = 'Analisi del PTOF in corso…';
+  try{
+    const system = "Sei un esperto di progettazione curricolare per la scuola italiana. Analizza il testo di un PTOF e restituisci in italiano, in forma sintetica a punti, le priorità strategiche dell'istituto (inclusione, rapporto con il territorio, ampliamento dell'offerta, contrasto alla dispersione, ecc.). Quando pertinente, segnala il collegamento con i pilastri delle Nuove Indicazioni 2025: "+SINTESI_2025+" Non inventare informazioni assenti nel testo. Restituisci solo l'elenco puntato, senza premesse.";
+    const out = await callBackend(system, "Testo del PTOF:\n\n"+src.slice(0,8000), 2000);
+    document.getElementById('prioritiesPreview').innerText = out;
+    state.priorities = out; await saveState();
+    document.getElementById('prioritiesStatus').textContent = 'Priorità generate.';
+  }catch(e){
+    toast(e.message, {err:true, duration:6000});
+    document.getElementById('prioritiesStatus').textContent = '';
+  }finally{ btn.disabled=false; }
+}
+
+/* =====================================================================
+   SEZIONE 3 — CURRICOLO VERTICALE D'ISTITUTO (generazione per disciplina)
+   ===================================================================== */
+function toggleOrdine(el, ord){
+  el.classList.toggle('on');
+  state.ordiniAttivi[ord] = el.classList.contains('on');
+  saveState();
+}
+async function generateCurricolo(){
+  const src = state.ptof.text || state.ptof.manualText;
+  if(!src){ toast('Carica prima il PTOF nella sezione precedente.', {err:true}); document.getElementById('sec2').scrollIntoView({behavior:'smooth'}); return; }
+  const selected = Object.keys(state.ordiniAttivi).filter(k=>state.ordiniAttivi[k]);
+  if(!selected.length){ toast('Seleziona almeno un ordine di scuola.', {err:true}); return; }
+  const btn = document.getElementById('btnGenCurricolo'); btn.disabled=true;
+  const status = document.getElementById('curricoloStatus');
+  const preview = document.getElementById('curricoloPreview');
+  preview.innerText = '';
+
+  const tasks = [];
+  selected.forEach(ord=>{
+    if(ord==='infanzia'){ tasks.push({ord, label:"Scuola dell'Infanzia"}); }
+    else { DISCIPLINE[ord].forEach(d=>tasks.push({ord, disciplina:d, label:ORDINI[ord].label+' — '+d})); }
+  });
+
+  let full = '';
+  let i = 0;
+  for(const task of tasks){
+    i++;
+    status.textContent = 'Generazione: '+task.label+' ('+i+'/'+tasks.length+')…';
+    try{
+      full += await generateCurricoloChunk(task, src) + '\n\n';
+    }catch(e){
+      full += '\n[Errore per '+task.label+': '+e.message+']\n\n';
+      toast(e.message, {err:true, duration:6000});
+    }
+    preview.innerText = full;
+  }
+  state.curricolo = full.trim(); await saveState();
+  status.textContent = 'Curricolo generato.';
+  btn.disabled=false;
+}
+async function generateCurricoloChunk(task, ptofText){
+  const priorities = state.priorities || '(nessuna priorità generata: usa direttamente il PTOF)';
+  if(task.ord==='infanzia'){
+    const system = "Sei un esperto di curricolo per la scuola dell'infanzia italiana. Applica le Nuove Indicazioni Nazionali 2025 (D.M. 221/2025): "+SINTESI_2025+" Genera un curricolo verticale d'istituto sintetico ma completo per i 5 campi di esperienza (Il sé e l'altro; Il corpo e il movimento; Immagini, suoni, colori; I discorsi e le parole; La conoscenza del mondo), calibrato sul PTOF e sulle priorità dell'istituto. Per ciascun campo indica: finalità, competenze attese, obiettivi specifici di apprendimento (OSA) per fascia d'età (3-4, 4-5, 5-6 anni). Formato a titoli e punti elenco, italiano, senza premesse.";
+    const user = "PRIORITÀ D'ISTITUTO:\n"+priorities+"\n\nCONTESTO PTOF:\n"+ptofText.slice(0,3000);
+    return "## SCUOLA DELL'INFANZIA\n" + await callBackend(system, user, 4000);
+  } else {
+    const rif = SINTESI_2012[task.disciplina] || '';
+    const finali = task.ord==='primaria' ? "fine classe 3ª e fine classe 5ª" : "fine classe 3ª";
+    const system = "Sei un esperto di curricolo verticale per la "+ORDINI[task.ord].label+" italiana, disciplina '"+task.disciplina+"'. Genera il curricolo d'istituto per questa disciplina applicando le Indicazioni 2012 (D.M. 254/2012) come struttura portante — traguardi di riferimento: "+rif+" — con obiettivi specifici di apprendimento e conoscenze differenziati per "+finali+". Integra inoltre, dove pertinente, i contenuti delle Nuove Indicazioni 2025 che si applicheranno alla classe prima: "+SINTESI_2025+" Calibra tutto sul PTOF e sulle priorità dell'istituto fornite. Indica: conoscenze essenziali/significative/rilevanti, obiettivi specifici di apprendimento, traguardi per lo sviluppo delle competenze. Punti elenco, italiano, senza premesse.";
+    const user = "PRIORITÀ D'ISTITUTO:\n"+priorities+"\n\nCONTESTO PTOF:\n"+ptofText.slice(0,2000);
+    return "## "+ORDINI[task.ord].label.toUpperCase()+" — "+task.disciplina+"\n" + await callBackend(system, user, 3000);
+  }
+}
+
+/* =====================================================================
+   SEZIONE 4 — CLASSE / DISCIPLINA / PROGRAMMAZIONE
+   ===================================================================== */
+function frameworkFor(ordine, classeId){
+  if(ordine==='infanzia') return '2025';
+  if(ordine==='primaria') return classeId==='p1' ? '2025':'2012';
+  if(ordine==='secondaria') return classeId==='s1' ? '2025':'2012';
+  return '2012';
+}
+function hexBadge(f){
+  return `<div class="hex-pill"><div class="hex f${f}"><span class="yr">${f}</span><span class="lb">${f==='2025'?'Nuove Ind.':'Indicazioni prev.'}</span></div><span class="txt">${f==='2025'?'D.M. 221/2025 applicabile':'D.M. 254/2012 applicabile'}</span></div>`;
+}
+function selectClasse(ordine, selectEl){
+  ['infanzia','primaria','secondaria'].forEach(o=>{
+    document.getElementById('box-'+o).classList.remove('active');
+    if(o!==ordine){ const sel = document.querySelector('#box-'+o+' select'); if(sel) sel.value=''; }
+  });
+  const classeId = selectEl.value;
+  if(!classeId){ document.getElementById('disciplinaCard').style.display='none'; return; }
+  document.getElementById('box-'+ordine).classList.add('active');
+  state.selection.ordine = ordine; state.selection.classe = classeId; state.selection.disciplina='';
+  saveState();
+  const f = frameworkFor(ordine, classeId);
+  document.getElementById('frameworkIndicator').innerHTML = hexBadge(f);
+  document.getElementById('disciplinaIntro').style.display = (ordine==='infanzia') ? 'none':'block';
+  populateDisciplinePanel(ordine);
+  document.getElementById('disciplinaCard').style.display='block';
+}
+function toggleDisciplinePanel(){ document.getElementById('disciplinePanel').classList.toggle('show'); }
+function populateDisciplinePanel(ordine){
+  const panel = document.getElementById('disciplinePanel');
+  panel.innerHTML = DISCIPLINE[ordine].map(d=>`<button class="chip" data-d="${d}" onclick="pickDisciplina(this,'${d}')">${d}</button>`).join('');
+}
+function pickDisciplina(el, d){
+  document.querySelectorAll('#disciplinePanel .chip').forEach(c=>c.classList.remove('on'));
+  el.classList.add('on');
+  state.selection.disciplina = d; saveState();
+}
+async function generateProgrammazione(){
+  if(!state.curricolo){ toast('Genera prima il curricolo d\'Istituto (sezione precedente).', {err:true}); document.getElementById('sec3').scrollIntoView({behavior:'smooth'}); return; }
+  const {ordine, classe, disciplina} = state.selection;
+  if(!ordine || !classe){ toast('Seleziona ordine e classe.', {err:true}); return; }
+  if(!disciplina){ toast('Scegli una disciplina.', {err:true}); return; }
+  const contesto = document.getElementById('contestoClasse').value;
+  const f = frameworkFor(ordine, classe);
+  const btn = document.getElementById('btnGenProgrammazione'); btn.disabled=true;
+  document.getElementById('programmazioneStatus').textContent = 'Generazione in corso…';
+  try{
+    const rifNorma = f==='2025' ? SINTESI_2025 : (SINTESI_2012[disciplina]||'');
+    const system = "Sei un esperto di progettazione didattica per la "+ORDINI[ordine].label+" italiana. Genera la programmazione disciplinare di '"+disciplina+"' per la "+ORDINI[ordine].classi[classe]+", riferimento normativo: "+(f==='2025'?'D.M. 221/2025 — Nuove Indicazioni':'D.M. 254/2012')+" — "+rifNorma+". Basati sul curricolo d'istituto fornito, sul contesto classe (inclusi eventuali alunni BES: distingui metodologie per DSA/PDP, svantaggio linguistico e socio-culturale, ADHD e altro) e sulle priorità del PTOF. Includi: nuclei tematici/argomenti per periodo, attività didattiche, metodologie, strumenti, criteri di verifica in itinere. Formato a titoli e punti elenco, italiano, senza premesse.";
+    const user = "CURRICOLO D'ISTITUTO (estratto):\n"+extractRelevant(disciplina)+"\n\nCONTESTO CLASSE (con eventuali BES):\n"+(contesto||'(non specificato)')+"\n\nPRIORITÀ D'ISTITUTO:\n"+(state.priorities||'(nessuna)');
+    const out = await callBackend(system, user, 6000);
+    document.getElementById('programmazionePreview').innerText = out;
+    state.programmazione = out; await saveState();
+    document.getElementById('programmazioneStatus').textContent = 'Programmazione generata.';
+  }catch(e){
+    toast(e.message, {err:true, duration:6000});
+    document.getElementById('programmazioneStatus').textContent = '';
+  }finally{ btn.disabled=false; }
+}
+function extractRelevant(disciplina){
+  const full = state.curricolo || '';
+  const idx = full.indexOf(disciplina);
+  if(idx===-1) return full.slice(0,2500);
+  return full.slice(Math.max(0,idx-100), idx+2300);
+}
+
+/* =====================================================================
+   SEZIONE 5 — VALUTAZIONE (generazione per tipologia)
+   ===================================================================== */
+function toggleValutazione(el, tipo){
+  el.classList.toggle('on');
+  state.valutazioneTipi[tipo] = el.classList.contains('on');
+  saveState();
+}
+const VALUTAZIONE_LABELS = {diagnostica:'Diagnostica', iniziale:'Iniziale', formativa:'Formativa in Itinere', autovalutativa:'Autovalutativa', metacognitiva:'Metacognitiva', finale:'Finale'};
+async function generateValutazione(){
+  if(!state.programmazione){ toast('Genera prima la programmazione disciplinare.', {err:true}); document.getElementById('sec4').scrollIntoView({behavior:'smooth'}); return; }
+  const selected = Object.keys(state.valutazioneTipi).filter(k=>state.valutazioneTipi[k]);
+  if(!selected.length){ toast('Seleziona almeno una tipologia di valutazione.', {err:true}); return; }
+  const {ordine, classe, disciplina} = state.selection;
+  const attivita = document.getElementById('attivitaValutazione').value;
+  const btn = document.getElementById('btnGenValutazione'); btn.disabled=true;
+  const status = document.getElementById('valutazioneStatus');
+  const preview = document.getElementById('valutazionePreview');
+  preview.innerText = '';
+  const f = frameworkFor(ordine||'primaria', classe||'p2');
+
+  let full = '';
+  let i = 0;
+  for(const tipo of selected){
+    i++;
+    status.textContent = 'Generazione griglia: '+VALUTAZIONE_LABELS[tipo]+' ('+i+'/'+selected.length+')…';
+    try{
+      const system = "Sei un esperto di valutazione scolastica in Italia. Genera UNA griglia di valutazione di tipo '"+VALUTAZIONE_LABELS[tipo]+"' per la disciplina '"+(disciplina||'(non specificata)')+"', "+(ORDINI[ordine]?ORDINI[ordine].label:'')+" "+(ordine&&classe?ORDINI[ordine].classi[classe]:'')+", riferimento "+(f==='2025'?'D.M. 221/2025':'D.M. 254/2012')+". La griglia deve avere indicatori osservabili e descrittori per 4 livelli (Iniziale, Base, Intermedio, Avanzato), presentata come tabella testuale, collegata agli OSA della programmazione e alle Competenze Chiave (D.M. 14/2024). Tieni conto del contesto classe e dell'attività indicata. Italiano, senza premesse.";
+      const user = "ATTIVITÀ/PERCORSO:\n"+(attivita||'(non specificata)')+"\n\nPROGRAMMAZIONE DI RIFERIMENTO (estratto):\n"+state.programmazione.slice(0,2200);
+      full += "## GRIGLIA "+VALUTAZIONE_LABELS[tipo].toUpperCase()+"\n" + await callBackend(system, user, 2500) + "\n\n";
+    }catch(e){
+      full += '\n[Errore per '+VALUTAZIONE_LABELS[tipo]+': '+e.message+']\n\n';
+      toast(e.message, {err:true, duration:6000});
+    }
+    preview.innerText = full;
+  }
+  state.valutazione = full.trim(); await saveState();
+  status.textContent = 'Griglie generate.';
+  btn.disabled=false;
+}
+
+/* =====================================================================
+   SEZIONE 6 — PROGETTAZIONE UDA
+   ===================================================================== */
+async function generateUda(){
+  const discipline = document.getElementById('udaDiscipline').value.trim();
+  const competenza = document.getElementById('udaCompetenza').value;
+  const bes = document.getElementById('udaBes').value.trim();
+  const richiesta = document.getElementById('udaRichiesta').value.trim();
+  if(!discipline || !competenza || !richiesta){ toast('Compila i campi obbligatori: discipline coinvolte, competenza chiave e richiesta.', {err:true}); return; }
+  const btn = document.getElementById('btnGenUda'); btn.disabled=true;
+  document.getElementById('udaStatus').textContent = 'Generazione UDA in corso…';
+  try{
+    const {ordine, classe} = state.selection;
+    const f = frameworkFor(ordine||'primaria', classe||'p2');
+    const system = "Sei un esperto di progettazione didattica per Unità di Apprendimento (UDA) nella scuola italiana. Genera una progettazione UDA completa rispondendo alle quattro domande guida (quali obiettivi, quali esperienze, come organizzarle, come accertare i risultati). Includi: Contesto classe, Conoscenze (rilevanti/significative/essenziali), Obiettivi e Competenze (OSA coerenti con la competenza chiave indicata), Metodologie e Strategie, Strumenti e Risorse, e — se sono presenti alunni BES — personalizzazione coerente con quanto dichiarato nel PEI/PDP. Riferimento normativo: "+(f==='2025'?'D.M. 221/2025 — '+SINTESI_2025:'D.M. 254/2012 — '+(SINTESI_2012[discipline.split(',')[0].trim()]||''))+". Formato a titoli e punti elenco, italiano, senza premesse.";
+    const user = "DISCIPLINE COINVOLTE: "+discipline+"\nCOMPETENZA CHIAVE PREDILETTA: "+competenza+"\nALUNNI BES (PEI/PDP): "+(bes||'nessuno segnalato')+"\n\nCURRICOLO/PROGRAMMAZIONE DI RIFERIMENTO (estratto):\n"+(state.programmazione||state.curricolo||'').slice(0,2000)+"\n\nRICHIESTA DEL DOCENTE:\n"+richiesta;
+    const out = await callBackend(system, user, 6000);
+    document.getElementById('udaPreview').innerText = out;
+    state.uda = out; await saveState();
+    document.getElementById('udaStatus').textContent = 'Progettazione UDA generata.';
+  }catch(e){
+    toast(e.message, {err:true, duration:6000});
+    document.getElementById('udaStatus').textContent = '';
+  }finally{ btn.disabled=false; }
+}
+
+/* =====================================================================
+   INIT
+   ===================================================================== */
+async function init(){
+  await loadState();
+  await setupPdfWorker();
+
+  if(window.location.protocol === 'file:'){
+    document.getElementById('fileWarningBanner').style.display = 'block';
+  }
+
+  document.querySelector('.badges-row').innerHTML =
+    `<div class="hex-pill"><div class="hex f2025"><span class="yr">2025</span><span class="lb">Nuove Ind.</span></div><span class="txt">Nuove Indicazioni<br>D.M. 221/2025</span></div>
+     <div class="hex-pill"><div class="hex f2012"><span class="yr">2012</span><span class="lb">Indicazioni prev.</span></div><span class="txt">Indicazioni previgenti<br>D.M. 254/2012</span></div>`;
+
+  if(state.ptof.fileName){
+    document.getElementById('ptofChipHost').innerHTML = `<div class="file-chip">📎 ${state.ptof.fileName} <button onclick="clearPtofFile()">×</button></div>`;
+  }
+  document.getElementById('ptofManualText').value = state.ptof.manualText || '';
+  if(state.ptof.manualText){ document.getElementById('manualPtofField').style.display='block'; }
+
+  document.getElementById('prioritiesPreview').innerText = state.priorities || '';
+  document.getElementById('curricoloPreview').innerText = state.curricolo || '';
+  document.getElementById('programmazionePreview').innerText = state.programmazione || '';
+  document.getElementById('valutazionePreview').innerText = state.valutazione || '';
+  document.getElementById('udaPreview').innerText = state.uda || '';
+
+  Object.keys(state.ordiniAttivi).forEach(ord=>{
+    const card = document.querySelector('.toggle-card[data-ord="'+ord+'"]');
+    if(card) card.classList.toggle('on', !!state.ordiniAttivi[ord]);
+  });
+  Object.keys(state.valutazioneTipi).forEach(tipo=>{
+    const card = document.querySelector('.eval-card[data-tipo="'+tipo+'"]');
+    if(card) card.classList.toggle('on', !!state.valutazioneTipi[tipo]);
+  });
+
+  updateGates();
+}
+init();
+</script>
+</body>
+</html>
