@@ -1,15 +1,13 @@
-// Questo è il codice completo per api/generate.js
 export default async function handler(req, res) {
-  // Accettiamo solo richieste di tipo POST
   if (req.method !== 'POST') {
-    return res.status(405).json({ error: "Method not allowed" });
+    return res.status(405).json({ error: "Metodo non consentito" });
   }
 
   const { fileData, prompt } = req.body;
   const apiKey = process.env.GEMINI_API_KEY;
 
   if (!apiKey) {
-    return res.status(500).json({ error: "API Key mancante nelle impostazioni di Vercel" });
+    return res.status(500).json({ error: "API Key mancante" });
   }
 
   try {
@@ -21,28 +19,19 @@ export default async function handler(req, res) {
           role: "user",
           parts: [
             { text: prompt },
-            { 
-              inline_data: { 
-                mime_type: "application/pdf", 
-                data: fileData 
-              } 
-            }
+            { inline_data: { mime_type: "application/pdf", data: fileData } }
           ]
         }]
       })
     });
 
     const data = await response.json();
-
-    // Verifichiamo se Gemini ha restituito una risposta valida
     if (data.candidates && data.candidates[0].content.parts[0].text) {
       res.status(200).json({ text: data.candidates[0].content.parts[0].text });
     } else {
-      throw new Error("Gemini non ha restituito testo. Controlla il formato del PDF.");
+      res.status(500).json({ error: "Gemini non ha risposto correttamente" });
     }
-
   } catch (error) {
-    console.error("Errore API:", error);
     res.status(500).json({ error: error.message });
   }
 }
