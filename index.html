@@ -1198,22 +1198,53 @@ async function init(){
 
   updateGates();
 }
-init();
-<div style="margin-top: 20px; padding: 15px; border: 1px solid #ccc;">
-        <h3>Carica il tuo documento</h3>
-        <input type="file" id="pdfInput" accept="application/pdf">
-        <button onclick="uploadAndAnalyze()">Analizza PDF</button>
-        <p id="statusMessage"></p>
-    </div>
+<script>
+    async function uploadAndAnalyze() {
+        const fileInput = document.getElementById('pdfInput');
+        const status = document.getElementById('statusMessage');
+        
+        if (fileInput.files.length === 0) {
+            alert("Per favore, seleziona un file PDF.");
+            return;
+        }
 
-    <script>
-        async function uploadAndAnalyze() {
-            const fileInput = document.getElementById('pdfInput');
-            const status = document.getElementById('statusMessage');
-            
-            if (fileInput.files.length === 0) {
-                alert("Per favore, seleziona un file PDF.");
-                return;
+        const file = fileInput.files[0];
+        const reader = new FileReader();
+
+        status.innerText = "Caricamento e analisi in corso... attendi.";
+
+        reader.onload = async function(e) {
+            // Prendiamo solo la parte dopo la virgola (il Base64 reale)
+            const base64Data = e.target.result.split(',')[1];
+
+            try {
+                const response = await fetch('/api/generate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        fileData: base64Data,
+                        prompt: "Analizza questo documento PDF di 128 pagine e genera le priorità operative."
+                    })
+                });
+
+                const result = await response.json();
+                
+                if (result.text) {
+                    status.innerText = "Analisi completata!";
+                    console.log("Risposta AI:", result.text);
+                    alert("Analisi terminata: controlla la console (F12) o aggiungi qui il codice per mostrarla a video.");
+                } else {
+                    throw new Error(result.error || "Errore sconosciuto");
+                }
+            } catch (error) {
+                status.innerText = "Errore: " + error.message;
+                console.error("Errore durante la fetch:", error);
+            }
+        };
+
+        reader.readAsDataURL(file);
+    }
+</script>
             }
 
             const file = fileInput.files[0];
