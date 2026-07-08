@@ -1,6 +1,6 @@
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
-    return res.status(405).json({ error: "Metodo non consentito" });
+    return res.status(405).json({ error: "Method not allowed" });
   }
 
   const { fileData, prompt } = req.body;
@@ -26,10 +26,11 @@ export default async function handler(req, res) {
     });
 
     const data = await response.json();
+    
     if (data.candidates && data.candidates[0].content.parts[0].text) {
       res.status(200).json({ text: data.candidates[0].content.parts[0].text });
     } else {
-      res.status(500).json({ error: "Gemini non ha risposto correttamente" });
+      throw new Error("Risposta non valida da Gemini");
     }
   } catch (error) {
     res.status(500).json({ error: error.message });
