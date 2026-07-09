@@ -1,150 +1,199 @@
 // api/generate.js
-// ===============================
-// EduPlan AI Engine v2.0
-// PARTE 1/3
-// ===============================
+//
+// Funzione serverless per Vercel: riceve le richieste dalla web app, tiene la
+// chiave Gemini nascosta (letta da una variabile d'ambiente configurata su
+// Vercel) e la usa per generare testo. Se la risposta viene troncata, chiede
+// automaticamente di continuare finché il documento non è completo.
+//
+// Convenzione Vercel: un file in /api/generate.js risponde automaticamente
+// all'indirizzo /api/generate.
 
 const MODELS = [
-  "gemini-2.5-flash",
-  "gemini-2.5-flash-lite",
-  "gemini-2.0-flash"
+  'gemini-2.5-flash',
+  'gemini-2.5-flash-lite',
+  'gemini-2.0-flash'
 ];
 
 const DEFAULT_MODEL = MODELS[0];
-
-const MAX_CONTINUATIONS = 5;
+const MAX_CONTINUATIONS = 3;
 const MAX_RETRIES = 3;
 const RETRY_DELAY = 3000;
-const REQUEST_TIMEOUT = 60000;
 
 function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
+module.exports = async (req, res) => {
+  const apiKey = process.env.GEMINI_API_KEY;
 
-function translateError(message = "") {
-
-  const msg = message.toLowerCase();
-
-  if (msg.includes("high demand")) {
-    return "I server di Gemini sono temporaneamente molto occupati. Sto riprovando automaticamente...";
+  if (!apiKey) {
+    res.status(500).json({
+      error: "La variabile GEMINI_API_KEY non è configurata su Vercel. Vai su Project Settings → Environment Variables, aggiungila, poi rifai il deploy (Deployments → ⋯ → Redeploy)."
+    });
+    return;
   }
 
-  if (msg.includes("quota")) {
-    return "Hai esaurito la quota disponibile della tua API Gemini.";
+  // Richiesta GET → usata dal pulsante "Testa connessione"
+  if (req.method === 'GET') {
+    try {
+      const testUrl = `https://generativelanguage.googleapis.com/v1beta/models?key=${encodeURIComponent(apiKey)}`;
+      const r = await fetch(testUrl);
+      const d = await r.json();
+      if (!r.ok) {
+        res.status(502).json({ error: (d.error && d.error.message) || ('Errore ' + r.status) });
+        return;
+      }
+      res.status(200).json({ ok: true });
+    } catch (e) {
+      res.status(502).json({ error: 'Il server non riesce a raggiungere Gemini: ' + e.message });
+    }
+    return;
   }
 
-  if (msg.includes("api key")) {
-    return "La chiave API Gemini non è valida.";
+  if (req.method !== 'POST') {
+    res.status(405).json({ error: 'Metodo non consentito.' });
+    return;
   }
 
-  if (msg.includes("permission")) {
-    return "La tua API non dispone dei permessi necessari.";
+  const { systemInstruction, userText, maxOutputTokens, model } = req.body || {};
+  if (!userText || !String(userText).trim()) {
+    res.status(400).json({ error: 'Testo della richiesta mancante.' });
+    return;
   }
 
-  if (msg.includes("timeout")) {
-    return "Tempo massimo di attesa superato.";
-  }
-
-  return message || "Errore sconosciuto.";
-}
-
-async function fetchWithTimeout(url, options) {
-
-  const controller = new AbortController();
-
-  const timeout = setTimeout(() => {
-    controller.abort();
-  }, REQUEST_TIMEOUT);
+  const chosenModel = model || DEFAULT_MODEL;
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(chosenModel)}:generateContent?key=${encodeURIComponent(apiKey)}`;
+  const tokensPerCall = Math.max(256, Math.min(Number(maxOutputTokens) || 3000, 8192));
 
   try {
-
-    const response = await fetch(url, {
-      ...options,
-      signal: controller.signal
-    });
-
-    clearTimeout(timeout);
-
-    return response;
-
-  } catch (err) {
-
-    clearTimeout(timeout);
-
-    throw err;
-
+    const text = await generateWithContinuation(url, systemInstruction, userText, tokensPerCall);
+    res.status(200).json({ text });
+  } catch (e) {
+    res.status(502).json({ error: e.message });
   }
+};
 
-}
+async function generateWithContinuation(url, systemInstruction, userText, tokensPerCall) {
+  let contents = [{ role: 'user', parts: [{ text: userText }] }];
+  let fullText = '';
 
-async function callGemini(apiKey, body, preferredModel = DEFAULT_MODEL) {
+  for (let i = 0; i <= MAX_CONTINUATIONS; i++) {
+    const body = {
+      contents,
+      generationConfig: { temperature: 0.6, maxOutputTokens: tokensPerCall }
+    };
+    if (systemInstruction) {
+      body.systemInstruction = { parts: [{ text: systemInstruction }] };
+    }
 
-  const orderedModels = [
-    preferredModel,
-    ...MODELS.filter(m => m !== preferredModel)
-  ];
+    let apiRes;
+let data;
+let lastError = '';
 
-  let lastError = "";
+for (let modelIndex = 0; modelIndex < MODELS.length; modelIndex++) {
 
-  for (const model of orderedModels) {
+    const currentModel = MODELS[modelIndex];
 
-    const url =
-      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`;
+    const currentUrl =
+        `https://generativelanguage.googleapis.com/v1beta/models/${currentModel}:generateContent?key=${encodeURIComponent(apiKey)}`;
 
     for (let retry = 0; retry < MAX_RETRIES; retry++) {
 
-      try {
+        try {
 
-        const response = await fetchWithTimeout(url, {
+            const controller = new AbortController();
 
-          method: "POST",
+            const timeout = setTimeout(() => controller.abort(),60000);
 
-          headers: {
-            "Content-Type": "application/json"
-          },
+            apiRes = await fetch(currentUrl,{
+                method:'POST',
+                headers:{
+                    'Content-Type':'application/json'
+                },
+                body:JSON.stringify(body),
+                signal:controller.signal
+            });
 
-          body: JSON.stringify(body)
+            clearTimeout(timeout);
 
-        });
+            data = await apiRes.json();
 
-        const data = await response.json();
+            if(apiRes.ok){
 
-        if (response.ok) {
+                break;
 
-          return data;
+            }
+
+            const message =
+                data?.error?.message || '';
+
+            lastError = message;
+
+            if(message.includes("high demand")){
+
+                await sleep(RETRY_DELAY);
+
+                continue;
+
+            }
+
+            throw new Error(message);
 
         }
 
-        lastError =
-          data?.error?.message ||
-          `Errore ${response.status}`;
+        catch(err){
 
-        if (
-          lastError.toLowerCase().includes("high demand")
-        ) {
+            lastError = err.message;
 
-          await sleep(RETRY_DELAY);
+            if(retry < MAX_RETRIES-1){
 
-          continue;
+                await sleep(RETRY_DELAY);
+
+                continue;
+
+            }
 
         }
-
-        break;
-
-      } catch (err) {
-
-        lastError = err.message;
-
-        await sleep(RETRY_DELAY);
-
-      }
 
     }
 
+    if(apiRes?.ok){
+
+        break;
+
+    }
+
+}
+
+if(!apiRes?.ok){
+
+    throw new Error(
+        "I server di Google Gemini sono temporaneamente occupati. Riprova tra qualche minuto.\n\nDettaglio: "+lastError
+    );
+
+}
+    try { data = await apiRes.json(); } catch (e) { throw new Error('Risposta non valida da Gemini (' + apiRes.status + ').'); }
+
+    if (!apiRes.ok) {
+      const msg = (data && data.error && data.error.message) ? data.error.message : ('Errore Gemini ' + apiRes.status);
+      throw new Error(msg);
+    }
+    if (data.promptFeedback && data.promptFeedback.blockReason) {
+      throw new Error('Richiesta bloccata dal filtro di sicurezza di Gemini: ' + data.promptFeedback.blockReason);
+    }
+    const cand = data.candidates && data.candidates[0];
+    if (!cand) throw new Error('Nessuna risposta generata da Gemini.');
+
+    const chunk = ((cand.content && cand.content.parts) || []).map(p => p.text || '').join('');
+    fullText += chunk;
+
+    if (cand.finishReason !== 'MAX_TOKENS') break;
+    if (i === MAX_CONTINUATIONS) break;
+
+    contents.push({ role: 'model', parts: [{ text: chunk }] });
+    contents.push({ role: 'user', parts: [{ text: 'Continua esattamente da dove ti sei interrotto, senza ripetere quanto già scritto e senza aggiungere premesse.' }] });
   }
 
-  throw new Error(
-    translateError(lastError)
-  );
-
+  const finalText = fullText.trim();
+  if (!finalText) throw new Error('Gemini ha restituito una risposta vuota.');
+  return finalText;
 }
