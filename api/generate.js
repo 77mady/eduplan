@@ -8,9 +8,20 @@
 // Convenzione Vercel: un file in /api/generate.js risponde automaticamente
 // all'indirizzo /api/generate.
 
-const DEFAULT_MODEL = 'gemini-2.5-flash';
-const MAX_CONTINUATIONS = 3;
+const MODELS = [
+  'gemini-2.5-flash',
+  'gemini-2.5-flash-lite',
+  'gemini-2.0-flash'
+];
 
+const DEFAULT_MODEL = MODELS[0];
+const MAX_CONTINUATIONS = 3;
+const MAX_RETRIES = 3;
+const RETRY_DELAY = 3000;
+
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
 module.exports = async (req, res) => {
   const apiKey = process.env.GEMINI_API_KEY;
 
@@ -74,11 +85,92 @@ async function generateWithContinuation(url, systemInstruction, userText, tokens
       body.systemInstruction = { parts: [{ text: systemInstruction }] };
     }
 
-    const apiRes = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body)
-    });
+    let apiRes;
+let data;
+let lastError = '';
+
+for (let modelIndex = 0; modelIndex < MODELS.length; modelIndex++) {
+
+    const currentModel = MODELS[modelIndex];
+
+    const currentUrl =
+        `https://generativelanguage.googleapis.com/v1beta/models/${currentModel}:generateContent?key=${encodeURIComponent(apiKey)}`;
+
+    for (let retry = 0; retry < MAX_RETRIES; retry++) {
+
+        try {
+
+            const controller = new AbortController();
+
+            const timeout = setTimeout(() => controller.abort(),60000);
+
+            apiRes = await fetch(currentUrl,{
+                method:'POST',
+                headers:{
+                    'Content-Type':'application/json'
+                },
+                body:JSON.stringify(body),
+                signal:controller.signal
+            });
+
+            clearTimeout(timeout);
+
+            data = await apiRes.json();
+
+            if(apiRes.ok){
+
+                break;
+
+            }
+
+            const message =
+                data?.error?.message || '';
+
+            lastError = message;
+
+            if(message.includes("high demand")){
+
+                await sleep(RETRY_DELAY);
+
+                continue;
+
+            }
+
+            throw new Error(message);
+
+        }
+
+        catch(err){
+
+            lastError = err.message;
+
+            if(retry < MAX_RETRIES-1){
+
+                await sleep(RETRY_DELAY);
+
+                continue;
+
+            }
+
+        }
+
+    }
+
+    if(apiRes?.ok){
+
+        break;
+
+    }
+
+}
+
+if(!apiRes?.ok){
+
+    throw new Error(
+        "I server di Google Gemini sono temporaneamente occupati. Riprova tra qualche minuto.\n\nDettaglio: "+lastError
+    );
+
+}
 
     let data;
     try { data = await apiRes.json(); } catch (e) { throw new Error('Risposta non valida da Gemini (' + apiRes.status + ').'); }
