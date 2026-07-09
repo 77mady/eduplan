@@ -171,8 +171,6 @@ if(!apiRes?.ok){
     );
 
 }
-
-    let data;
     try { data = await apiRes.json(); } catch (e) { throw new Error('Risposta non valida da Gemini (' + apiRes.status + ').'); }
 
     if (!apiRes.ok) {
