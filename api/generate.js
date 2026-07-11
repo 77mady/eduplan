@@ -157,7 +157,7 @@ async function generateWithContinuation(apiKey, systemInstruction, userText, tok
 
     const body = {
       contents,
-      generationConfig: { temperature: 0.6, maxOutputTokens: tokensPerCall }
+      generationConfig: { temperature: 0.3, maxOutputTokens: tokensPerCall }
     };
     if (systemInstruction) {
       body.systemInstruction = { parts: [{ text: systemInstruction }] };
