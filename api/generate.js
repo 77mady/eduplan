@@ -8,7 +8,7 @@
 //    esecuzione delle funzioni Vercel (60s sul piano Hobby)
 //  - continuazione automatica se la risposta viene troncata
 
-const MODELS = ['gemini-2.5-flash', 'gemini-2.5-flash-lite', 'gemini-2.0-flash'];
+const MODELS = ['gemini-3.5-flash', 'gemini-2.5-flash', 'gemini-3.1-flash-lite'];
 const MAX_CONTINUATIONS = 3;         // quante volte, al massimo, chiedere "continua"
 const MAX_RETRIES_PER_MODEL = 2;     // nuovi tentativi per ciascun modello prima di passare al successivo
 const RETRY_DELAY_MS = 3000;
@@ -114,7 +114,9 @@ async function callModelOnce(apiKey, model, body, deadline) {
   }
 }
 
-// Prova i modelli in ordine, con nuovi tentativi su ciascuno, rispettando il tempo limite complessivo
+// Prova i modelli in ordine, con nuovi tentativi su ciascuno, rispettando il tempo limite complessivo.
+// Qualsiasi errore (temporaneo o definitivo, es. modello non più disponibile) fa passare al modello
+// successivo della lista, invece di interrompere subito tutto il processo.
 async function callGeminiWithFallback(apiKey, body, deadline) {
   let lastMessage = '';
   for (const model of MODELS) {
@@ -127,16 +129,16 @@ async function callGeminiWithFallback(apiKey, body, deadline) {
       } catch (err) {
         lastMessage = err.message;
         if (!err.transient) {
-          // Errore definitivo (es. richiesta malformata, contenuto bloccato): non ha senso riprovare
-          throw new Error(err.message);
+          // Errore specifico di questo modello (es. non più disponibile): passa al modello successivo
+          break;
         }
-        if (Date.now() + RETRY_DELAY_MS >= deadline) break; // niente tempo per un altro tentativo
+        if (Date.now() + RETRY_DELAY_MS >= deadline) break; // niente tempo per un altro tentativo su questo modello
         await sleep(RETRY_DELAY_MS);
       }
     }
-    // esauriti i tentativi su questo modello, si passa al successivo della lista
+    // si passa al modello successivo della lista
   }
-  throw new Error("C'è momentaneamente molta richiesta sui server di Google. Ho provato più volte con modelli diversi senza successo: riprova tra qualche minuto. Dettaglio tecnico: " + lastMessage);
+  throw new Error("C'è momentaneamente molta richiesta sui server di Google, oppure i modelli configurati non sono al momento disponibili. Ho provato tutti i modelli previsti senza successo: riprova tra qualche minuto. Dettaglio tecnico: " + lastMessage);
 }
 
 async function generateWithContinuation(apiKey, systemInstruction, userText, tokensPerCall, deadline) {
