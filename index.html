@@ -69,6 +69,12 @@ textarea,input,select{font-family:inherit;font-size:14px;}
   display:flex;align-items:center;justify-content:center;
 }
 .gear-btn:hover{background:var(--brand-soft);}
+.gear-btn-fixed{
+  position:fixed;top:16px;right:16px;z-index:110;
+  border:1px solid var(--line);background:var(--panel);width:40px;height:40px;border-radius:10px;
+  font-size:17px;display:flex;align-items:center;justify-content:center;box-shadow:var(--shadow);
+}
+.gear-btn-fixed:hover{background:var(--brand-soft);}
 
 /* ---------- Hero ---------- */
 .hero{min-height:92vh;display:flex;flex-direction:column;justify-content:center;position:relative;overflow:hidden;}
@@ -180,6 +186,7 @@ textarea{min-height:90px;line-height:1.55;resize:vertical;}
 .chip-panel.show{display:flex;}
 .chip{padding:8px 14px;border-radius:20px;border:1.5px solid var(--line);background:#fff;font-size:12.5px;font-weight:600;color:var(--ink-soft);}
 .chip.on{border-color:var(--plum);background:var(--plum-soft);color:var(--plum);}
+.recap-row{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:28px;}
 
 .doc-toolbar{display:flex;justify-content:space-between;align-items:center;gap:12px;margin:18px 0 8px;flex-wrap:wrap;}
 .doc-preview{
@@ -235,23 +242,15 @@ textarea{min-height:90px;line-height:1.55;resize:vertical;}
 <div id="fileWarningBanner" style="display:none;background:#B23B32;color:#fff;text-align:center;padding:12px 18px;font-size:13.5px;font-weight:600;position:sticky;top:0;z-index:100;">
   ⚠️ Questa versione richiede che l'app sia pubblicata online (serve un server che protegga la chiave): apri l'app dall'indirizzo pubblicato (es. su Vercel), non dal file sul computer. Vedi la guida allegata.
 </div>
+<button class="gear-btn-fixed" onclick="openSettings()" title="Impostazioni">⚙</button>
 
 <!-- ============ SETTINGS MODAL ============ -->
 <div class="modal-overlay" id="settingsModal">
   <div class="modal">
     <button class="modal-close" onclick="closeSettings()">×</button>
     <h3>Impostazioni</h3>
-    <p>La chiave Gemini è configurata in modo sicuro sul server e non è mai visibile né richiesta qui: non devi inserire nulla. Puoi solo scegliere il modello e verificare che tutto funzioni.</p>
-    <div class="field">
-      <label>Modello</label>
-      <select id="modelSelect">
-        <option value="gemini-2.5-flash">gemini-2.5-flash (consigliato)</option>
-        <option value="gemini-2.0-flash">gemini-2.0-flash</option>
-        <option value="gemini-1.5-flash">gemini-1.5-flash</option>
-      </select>
-    </div>
+    <p>La chiave Gemini è configurata in modo sicuro sul server e non è mai visibile né richiesta qui: non devi inserire nulla. Il sistema sceglie e cambia da solo il modello più adatto in caso di sovraccarico, e riprova automaticamente in caso di errori temporanei — non devi fare nulla.</p>
     <div class="row-actions">
-      <button class="btn primary sm" onclick="saveModelChoice()">Salva</button>
       <button class="btn ghost sm" onclick="testConnection()">🔌 Testa connessione</button>
     </div>
     <div class="muted" id="settingsStatus" style="margin-top:10px;"></div>
@@ -269,7 +268,6 @@ textarea{min-height:90px;line-height:1.55;resize:vertical;}
       <a href="#sec5" data-target="sec5" onclick="return navGuard('sec5', event)">Valutazione</a>
       <a href="#sec6" data-target="sec6" onclick="return navGuard('sec6', event)">UDA</a>
     </div>
-    <button class="gear-btn" onclick="openSettings()" title="Impostazioni">⚙</button>
   </div>
 </div>
 
@@ -326,6 +324,7 @@ textarea{min-height:90px;line-height:1.55;resize:vertical;}
       <div class="row-actions">
         <button class="btn ghost sm" onclick="toggleEdit('prioritiesPreview','btnEditPriorities')" id="btnEditPriorities">✎ Modifica</button>
         <button class="btn accent sm" onclick="saveSection('priorities','prioritiesPreview')">💾 Salva</button>
+        <button class="btn ghost sm" onclick="copyToClipboard('prioritiesPreview')">📋 Copia negli Appunti</button>
         <button class="btn ghost sm" onclick="toggleChat('priorities')">💬 Chiedi modifiche all'IA</button>
       </div>
       <div class="ai-chat" id="chat-priorities">
@@ -381,6 +380,7 @@ textarea{min-height:90px;line-height:1.55;resize:vertical;}
       <div class="row-actions">
         <button class="btn ghost sm" onclick="toggleEdit('curricoloPreview','btnEditCurricolo')" id="btnEditCurricolo">✎ Modifica curricolo</button>
         <button class="btn accent sm" onclick="saveSection('curricolo','curricoloPreview')">💾 Salva</button>
+        <button class="btn ghost sm" onclick="copyToClipboard('curricoloPreview')">📋 Copia negli Appunti</button>
         <button class="btn primary sm" onclick="downloadDoc('Curricolo_Istituto','curricoloPreview')">⬇ Scarica curricolo</button>
         <button class="btn ghost sm" onclick="toggleChat('curricolo')">💬 Chiedi modifiche all'IA</button>
       </div>
@@ -407,6 +407,7 @@ textarea{min-height:90px;line-height:1.55;resize:vertical;}
     <div class="sec-eyebrow">Passo 3</div>
     <h2 class="sec-title">Scegli ordine e grado</h2>
     <p class="sec-sub">Questa fase del processo progettuale consiste nell'individuare l'ordine e il grado di scuola di riferimento. Questa scelta determina automaticamente i campi d'esperienza o le discipline disponibili e il framework normativo applicabile.</p>
+    <div class="recap-row" id="recap-sec4"></div>
 
     <div class="card">
       <div class="dropdown-row">
@@ -470,6 +471,7 @@ textarea{min-height:90px;line-height:1.55;resize:vertical;}
       <div class="row-actions">
         <button class="btn ghost sm" onclick="toggleEdit('programmazionePreview','btnEditProgrammazione')" id="btnEditProgrammazione">✎ Modifica curricolo</button>
         <button class="btn accent sm" onclick="saveSection('programmazione','programmazionePreview')">💾 Salva</button>
+        <button class="btn ghost sm" onclick="copyToClipboard('programmazionePreview')">📋 Copia negli Appunti</button>
         <button class="btn primary sm" onclick="downloadDoc('Programmazione_Disciplinare','programmazionePreview')">⬇ Salva e scarica curricolo</button>
         <button class="btn ghost sm" onclick="toggleChat('programmazione')">💬 Chiedi modifiche all'IA</button>
       </div>
@@ -557,6 +559,7 @@ textarea{min-height:90px;line-height:1.55;resize:vertical;}
       <div class="row-actions">
         <button class="btn ghost sm" onclick="toggleEdit('valutazionePreview','btnEditValutazione')" id="btnEditValutazione">✎ Modifica</button>
         <button class="btn accent sm" onclick="saveSection('valutazione','valutazionePreview')">💾 Salva</button>
+        <button class="btn ghost sm" onclick="copyToClipboard('valutazionePreview')">📋 Copia negli Appunti</button>
         <button class="btn primary sm" onclick="downloadDoc('Griglie_Valutazione','valutazionePreview')">⬇ Salva e scarica</button>
         <button class="btn ghost sm" onclick="toggleChat('valutazione')">💬 Chiedi modifiche all'IA</button>
       </div>
@@ -583,6 +586,7 @@ textarea{min-height:90px;line-height:1.55;resize:vertical;}
     <div class="sec-eyebrow">Passo 5</div>
     <h2 class="sec-title">Progettazione UDA</h2>
     <p class="sec-sub">Ogni programmazione disciplinare include: <strong>Contesto classe</strong> (descrizione del gruppo, prerequisiti e clima di apprendimento), <strong>Conoscenze</strong> (selezionate per rilevanza culturale, significatività scientifica ed essenzialità formativa), <strong>Obiettivi e Competenze</strong> (OSA coerenti con le Competenze Chiave — D.M. 14/2024), <strong>Metodologie e Strategie</strong> (approcci didattici differenziati per stile di apprendimento), <strong>Strumenti e Risorse</strong> (materiali, tecnologie e ambienti di apprendimento).</p>
+    <div class="recap-row" id="recap-sec6"></div>
 
     <div class="note-box" style="margin-bottom:26px;">Le quattro domande-guida della progettazione: <strong>Quali obiettivi? Quali esperienze? Come organizzarle? Come accertare i risultati?</strong></div>
 
@@ -626,6 +630,7 @@ textarea{min-height:90px;line-height:1.55;resize:vertical;}
       <div class="row-actions">
         <button class="btn ghost sm" onclick="toggleEdit('udaPreview','btnEditUda')" id="btnEditUda">✎ Modifica progettazione</button>
         <button class="btn accent sm" onclick="saveSection('uda','udaPreview')">💾 Salva</button>
+        <button class="btn ghost sm" onclick="copyToClipboard('udaPreview')">📋 Copia negli Appunti</button>
         <button class="btn primary sm" onclick="downloadDoc('Progettazione_UDA','udaPreview')">⬇ Salva e scarica UDA</button>
         <button class="btn ghost sm" onclick="toggleChat('uda')">💬 Chiedi modifiche all'IA</button>
       </div>
@@ -691,7 +696,6 @@ async function stSet(key,value){
 }
 
 let state = {
-  model:'gemini-2.5-flash',
   ptof:{fileName:'', text:'', manualText:''},
   priorities:'', curricolo:'', programmazione:'', valutazione:'', uda:'',
   selection:{ordine:'', classe:'', disciplina:''},
@@ -755,16 +759,10 @@ function navGuard(sectionId, ev){
    SETTINGS MODAL
    ===================================================================== */
 function openSettings(){
-  document.getElementById('modelSelect').value = state.model || 'gemini-2.5-flash';
   document.getElementById('settingsStatus').textContent = '';
   document.getElementById('settingsModal').classList.add('show');
 }
 function closeSettings(){ document.getElementById('settingsModal').classList.remove('show'); }
-async function saveModelChoice(){
-  state.model = document.getElementById('modelSelect').value;
-  await saveState();
-  document.getElementById('settingsStatus').textContent = 'Salvato ✓';
-}
 async function testConnection(){
   const status = document.getElementById('settingsStatus');
   status.textContent = 'Test in corso…';
@@ -857,7 +855,7 @@ async function callBackend(systemInstruction, userText, maxOutputTokens=3000){
     res = await fetch('/api/generate', {
       method:'POST',
       headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({systemInstruction, userText, maxOutputTokens, model: state.model})
+      body: JSON.stringify({systemInstruction, userText, maxOutputTokens})
     });
   }catch(networkErr){
     if(window.location.protocol === 'file:'){
@@ -886,6 +884,46 @@ function toggleEdit(previewId, btnId){
   document.getElementById(btnId).textContent = editing ? labels[btnId] : '✓ Fine modifica';
   if(!editing) el.focus();
 }
+async function copyToClipboard(previewId){
+  const text = document.getElementById(previewId).innerText;
+  if(!text || !text.trim()){ toast('Non c\'è ancora nulla da copiare.', {err:true}); return; }
+  try{
+    await navigator.clipboard.writeText(text);
+    toast('Copiato negli appunti ✓', {ok:true});
+  }catch(e){
+    const ta = document.createElement('textarea');
+    ta.value = text; ta.style.position='fixed'; ta.style.opacity='0';
+    document.body.appendChild(ta); ta.select();
+    try{ document.execCommand('copy'); toast('Copiato negli appunti ✓', {ok:true}); }
+    catch(e2){ toast('Non sono riuscito a copiare automaticamente: seleziona e copia il testo manualmente.', {err:true}); }
+    document.body.removeChild(ta);
+  }
+}
+
+/* =====================================================================
+   RIEPILOGO DEL CONTESTO (mostra cosa è già stato acquisito)
+   ===================================================================== */
+function renderRecap(containerId){
+  const el = document.getElementById(containerId);
+  if(!el) return;
+  const items = [];
+  items.push({done: !!(state.ptof.text || state.ptof.manualText), label:'PTOF acquisito'});
+  items.push({done: !!state.completed.priorities, label:'Priorità definite'});
+  items.push({done: !!state.completed.curricolo, label:'Curricolo generato'});
+  if(state.selection.ordine && state.selection.classe){
+    items.push({done:true, label:ORDINI[state.selection.ordine].label+' — '+ORDINI[state.selection.ordine].classi[state.selection.classe]});
+  }
+  if(state.selection.disciplina){
+    items.push({done:true, label:'Disciplina: '+state.selection.disciplina});
+  }
+  items.push({done: !!state.completed.programmazione, label:'Programmazione generata'});
+  items.push({done: !!state.completed.valutazione, label:'Valutazione generata'});
+  el.innerHTML = items.map(it=>`<span class="chip${it.done?' on':''}">${it.done?'✔':'—'} ${it.label}</span>`).join('');
+}
+function renderAllRecaps(){
+  renderRecap('recap-sec4');
+  renderRecap('recap-sec6');
+}
 async function saveSection(key, previewId){
   const text = document.getElementById(previewId).innerText;
   if(!text || !text.trim()){ toast('Non c\'è ancora nulla da salvare: genera prima il contenuto.', {err:true}); return; }
@@ -895,6 +933,7 @@ async function saveSection(key, previewId){
     state.completed[key] = true;
     await saveState();
     updateGates();
+    renderAllRecaps();
     toast(wasLocked ? 'Salvato — sezione successiva sbloccata ✓' : 'Salvato.', {ok:true});
   }else{
     await saveState();
@@ -1053,6 +1092,7 @@ function selectClasse(ordine, selectEl){
   document.getElementById('disciplinaIntro').style.display = (ordine==='infanzia') ? 'none':'block';
   populateDisciplinePanel(ordine);
   document.getElementById('disciplinaCard').style.display='block';
+  renderAllRecaps();
 }
 function toggleDisciplinePanel(){ document.getElementById('disciplinePanel').classList.toggle('show'); }
 function populateDisciplinePanel(ordine){
@@ -1063,6 +1103,7 @@ function pickDisciplina(el, d){
   document.querySelectorAll('#disciplinePanel .chip').forEach(c=>c.classList.remove('on'));
   el.classList.add('on');
   state.selection.disciplina = d; saveState();
+  renderAllRecaps();
 }
 async function generateProgrammazione(){
   if(!state.curricolo){ toast('Genera prima il curricolo d\'Istituto (sezione precedente).', {err:true}); document.getElementById('sec3').scrollIntoView({behavior:'smooth'}); return; }
@@ -1197,6 +1238,7 @@ async function init(){
   });
 
   updateGates();
+  renderAllRecaps();
 }
 init();
 </script>
