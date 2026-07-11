@@ -17,7 +17,7 @@ const MAX_CONTINUATIONS = 3;         // quante volte, al massimo, chiedere "cont
 const MAX_RETRIES_PER_MODEL = 2;     // nuovi tentativi per ciascun modello prima di passare al successivo
 const RETRY_DELAY_MS = 3000;
 const PER_CALL_TIMEOUT_MS = 45000;
-const OVERALL_BUDGET_MS = 50000;     // tempo massimo totale (sotto il limite di 60s di Vercel)
+const OVERALL_BUDGET_MS = 58000;     // tempo massimo totale (sotto il limite di 60s di Vercel)
 
 function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
