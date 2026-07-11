@@ -1,33 +1,37 @@
 // api/generate.js
 //
 // Funzione serverless per Vercel: riceve le richieste dalla web app, tiene la
-// chiave Gemini nascosta (letta da una variabile d'ambiente configurata su
-// Vercel) e la usa per generare testo. Se la risposta viene troncata, chiede
-// automaticamente di continuare finché il documento non è completo.
-//
-// Convenzione Vercel: un file in /api/generate.js risponde automaticamente
-// all'indirizzo /api/generate.
+// chiave Gemini nascosta e la usa per generare testo. Include:
+//  - cambio automatico di modello se il primo è troppo occupato
+//  - nuovi tentativi automatici sugli errori temporanei ("alta richiesta")
+//  - un tempo limite complessivo pensato per restare sotto il limite di
+//    esecuzione delle funzioni Vercel (60s sul piano Hobby)
+//  - continuazione automatica se la risposta viene troncata
 
-const MODELS = [
-  'gemini-2.5-flash',
-  'gemini-2.5-flash-lite',
-  'gemini-2.0-flash'
-];
-
-const DEFAULT_MODEL = MODELS[0];
-const MAX_CONTINUATIONS = 3;
-const MAX_RETRIES = 3;
-const RETRY_DELAY = 3000;
+const MODELS = ['gemini-2.5-flash', 'gemini-2.5-flash-lite', 'gemini-2.0-flash'];
+const MAX_CONTINUATIONS = 3;         // quante volte, al massimo, chiedere "continua"
+const MAX_RETRIES_PER_MODEL = 2;     // nuovi tentativi per ciascun modello prima di passare al successivo
+const RETRY_DELAY_MS = 3000;
+const PER_CALL_TIMEOUT_MS = 20000;   // tempo massimo per un singolo tentativo
+const OVERALL_BUDGET_MS = 50000;     // tempo massimo totale (sotto il limite di 60s di Vercel)
 
 function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
+
+// Riconosce gli errori "temporanei" (vale la pena riprovare) da quelli definitivi
+function isTransient(status, message) {
+  const m = (message || '').toLowerCase();
+  return status === 429 || status === 503 || status === 500 ||
+    m.includes('overloaded') || m.includes('high demand') || m.includes('unavailable') || m.includes('quota');
+}
+
 module.exports = async (req, res) => {
   const apiKey = process.env.GEMINI_API_KEY;
 
   if (!apiKey) {
     res.status(500).json({
-      error: "La variabile GEMINI_API_KEY non è configurata su Vercel. Vai su Project Settings → Environment Variables, aggiungila, poi rifai il deploy (Deployments → ⋯ → Redeploy)."
+      error: "La variabile GEMINI_API_KEY non è configurata su Vercel. Vai su Project Settings → Environment Variables (ricordati di spuntare anche 'Production'), aggiungila, poi rifai il deploy (Deployments → ⋯ → Redeploy)."
     });
     return;
   }
@@ -54,29 +58,97 @@ module.exports = async (req, res) => {
     return;
   }
 
-  const { systemInstruction, userText, maxOutputTokens, model } = req.body || {};
+  const { systemInstruction, userText, maxOutputTokens } = req.body || {};
   if (!userText || !String(userText).trim()) {
     res.status(400).json({ error: 'Testo della richiesta mancante.' });
     return;
   }
 
-  const chosenModel = model || DEFAULT_MODEL;
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(chosenModel)}:generateContent?key=${encodeURIComponent(apiKey)}`;
   const tokensPerCall = Math.max(256, Math.min(Number(maxOutputTokens) || 3000, 8192));
+  const deadline = Date.now() + OVERALL_BUDGET_MS;
 
   try {
-    const text = await generateWithContinuation(url, systemInstruction, userText, tokensPerCall);
+    const text = await generateWithContinuation(apiKey, systemInstruction, userText, tokensPerCall, deadline);
     res.status(200).json({ text });
   } catch (e) {
     res.status(502).json({ error: e.message });
   }
 };
 
-async function generateWithContinuation(url, systemInstruction, userText, tokensPerCall) {
+// Un singolo tentativo di chiamata a un determinato modello, con timeout
+async function callModelOnce(apiKey, model, body, deadline) {
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(apiKey)}`;
+  const controller = new AbortController();
+  const remaining = deadline - Date.now();
+  const perCallTimeout = Math.max(3000, Math.min(PER_CALL_TIMEOUT_MS, remaining));
+  const timer = setTimeout(() => controller.abort(), perCallTimeout);
+
+  try {
+    const apiRes = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+      signal: controller.signal
+    });
+    clearTimeout(timer);
+
+    let data;
+    try {
+      data = await apiRes.json();
+    } catch (e) {
+      throw { transient: true, message: 'Risposta non valida dal server (' + apiRes.status + ').' };
+    }
+
+    if (!apiRes.ok) {
+      const message = (data && data.error && data.error.message) || ('Errore ' + apiRes.status);
+      throw { transient: isTransient(apiRes.status, message), message };
+    }
+    return data;
+  } catch (err) {
+    clearTimeout(timer);
+    if (err && err.name === 'AbortError') {
+      throw { transient: true, message: 'Google non ha risposto in tempo (timeout).' };
+    }
+    if (err && typeof err.transient === 'boolean') throw err;
+    throw { transient: true, message: (err && err.message) || 'Errore di rete.' };
+  }
+}
+
+// Prova i modelli in ordine, con nuovi tentativi su ciascuno, rispettando il tempo limite complessivo
+async function callGeminiWithFallback(apiKey, body, deadline) {
+  let lastMessage = '';
+  for (const model of MODELS) {
+    for (let attempt = 0; attempt <= MAX_RETRIES_PER_MODEL; attempt++) {
+      if (Date.now() >= deadline) {
+        throw new Error("I server di Google sono momentaneamente molto occupati e non hanno risposto in tempo utile. Riprova tra qualche minuto. Dettaglio: " + lastMessage);
+      }
+      try {
+        return await callModelOnce(apiKey, model, body, deadline);
+      } catch (err) {
+        lastMessage = err.message;
+        if (!err.transient) {
+          // Errore definitivo (es. richiesta malformata, contenuto bloccato): non ha senso riprovare
+          throw new Error(err.message);
+        }
+        if (Date.now() + RETRY_DELAY_MS >= deadline) break; // niente tempo per un altro tentativo
+        await sleep(RETRY_DELAY_MS);
+      }
+    }
+    // esauriti i tentativi su questo modello, si passa al successivo della lista
+  }
+  throw new Error("C'è momentaneamente molta richiesta sui server di Google. Ho provato più volte con modelli diversi senza successo: riprova tra qualche minuto. Dettaglio tecnico: " + lastMessage);
+}
+
+async function generateWithContinuation(apiKey, systemInstruction, userText, tokensPerCall, deadline) {
   let contents = [{ role: 'user', parts: [{ text: userText }] }];
   let fullText = '';
 
   for (let i = 0; i <= MAX_CONTINUATIONS; i++) {
+    if (Date.now() >= deadline) {
+      if (fullText.trim()) break; // meglio restituire quanto ottenuto finora che fallire del tutto
+      throw new Error('Tempo scaduto prima di ricevere una risposta da Google. Riprova.');
+    }
+
     const body = {
       contents,
       generationConfig: { temperature: 0.6, maxOutputTokens: tokensPerCall }
@@ -85,98 +157,8 @@ async function generateWithContinuation(url, systemInstruction, userText, tokens
       body.systemInstruction = { parts: [{ text: systemInstruction }] };
     }
 
-    let apiRes;
-let data;
-let lastError = '';
+    const data = await callGeminiWithFallback(apiKey, body, deadline);
 
-for (let modelIndex = 0; modelIndex < MODELS.length; modelIndex++) {
-
-    const currentModel = MODELS[modelIndex];
-
-    const currentUrl =
-        `https://generativelanguage.googleapis.com/v1beta/models/${currentModel}:generateContent?key=${encodeURIComponent(apiKey)}`;
-
-    for (let retry = 0; retry < MAX_RETRIES; retry++) {
-
-        try {
-
-            const controller = new AbortController();
-
-            const timeout = setTimeout(() => controller.abort(),60000);
-
-            apiRes = await fetch(currentUrl,{
-                method:'POST',
-                headers:{
-                    'Content-Type':'application/json'
-                },
-                body:JSON.stringify(body),
-                signal:controller.signal
-            });
-
-            clearTimeout(timeout);
-
-            data = await apiRes.json();
-
-            if(apiRes.ok){
-
-                break;
-
-            }
-
-            const message =
-                data?.error?.message || '';
-
-            lastError = message;
-
-            if(message.includes("high demand")){
-
-                await sleep(RETRY_DELAY);
-
-                continue;
-
-            }
-
-            throw new Error(message);
-
-        }
-
-        catch(err){
-
-            lastError = err.message;
-
-            if(retry < MAX_RETRIES-1){
-
-                await sleep(RETRY_DELAY);
-
-                continue;
-
-            }
-
-        }
-
-    }
-
-    if(apiRes?.ok){
-
-        break;
-
-    }
-
-}
-
-if(!apiRes?.ok){
-
-    throw new Error(
-        "I server di Google Gemini sono temporaneamente occupati. Riprova tra qualche minuto.\n\nDettaglio: "+lastError
-    );
-
-}
-    try { data = await apiRes.json(); } catch (e) { throw new Error('Risposta non valida da Gemini (' + apiRes.status + ').'); }
-
-    if (!apiRes.ok) {
-      const msg = (data && data.error && data.error.message) ? data.error.message : ('Errore Gemini ' + apiRes.status);
-      throw new Error(msg);
-    }
     if (data.promptFeedback && data.promptFeedback.blockReason) {
       throw new Error('Richiesta bloccata dal filtro di sicurezza di Gemini: ' + data.promptFeedback.blockReason);
     }
