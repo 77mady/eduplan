@@ -68,7 +68,7 @@ module.exports = async (req, res) => {
     return;
   }
 
-  const tokensPerCall = Math.max(256, Math.min(Number(maxOutputTokens) || 3000, 8192));
+  const tokensPerCall = Math.max(1024, Math.min(Number(maxOutputTokens) || 6000, 8192));
   const deadline = Date.now() + OVERALL_BUDGET_MS;
 
   try {
