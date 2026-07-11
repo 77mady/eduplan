@@ -8,15 +8,11 @@
 //    esecuzione delle funzioni Vercel (60s sul piano Hobby)
 //  - continuazione automatica se la risposta viene troncata
 
-const MODELS = [
-  "gemini-2.5-flash",
-  "gemini-2.5-flash-lite",
-  "gemini-2.0-flash"
-];
+const MODELS = ['gemini-3.5-flash', 'gemini-2.5-flash', 'gemini-3.1-flash-lite'];
 const MAX_CONTINUATIONS = 6;         // quante volte, al massimo, chiedere "continua"
 const MAX_RETRIES_PER_MODEL = 2;     // nuovi tentativi per ciascun modello prima di passare al successivo
 const RETRY_DELAY_MS = 3000;
-const PER_CALL_TIMEOUT_MS = 45000;   // tempo massimo per un singolo tentativo (generazioni lunghe richiedono più tempo)
+const PER_CALL_TIMEOUT_MS = 45000;   // tempo massimo per un singolo tentativo
 const OVERALL_BUDGET_MS = 58000;     // tempo massimo totale (sotto il limite di 60s di Vercel)
 
 function sleep(ms) {
