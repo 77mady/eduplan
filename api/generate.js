@@ -13,7 +13,7 @@ const MODELS = [
   "gemini-2.5-flash-lite",
   "gemini-2.0-flash"
 ];
-const MAX_CONTINUATIONS = 3;         // quante volte, al massimo, chiedere "continua"
+const MAX_CONTINUATIONS = 6;         // quante volte, al massimo, chiedere "continua"
 const MAX_RETRIES_PER_MODEL = 2;     // nuovi tentativi per ciascun modello prima di passare al successivo
 const RETRY_DELAY_MS = 3000;
 const PER_CALL_TIMEOUT_MS = 45000;   // tempo massimo per un singolo tentativo (generazioni lunghe richiedono più tempo)
