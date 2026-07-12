@@ -1,4 +1,3 @@
-
 // api/generate.js
 //
 // Funzione serverless per Vercel: riceve le richieste dalla web app, tiene le
