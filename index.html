@@ -670,24 +670,21 @@ textarea{min-height:90px;line-height:1.55;resize:vertical;}
     </div>
 
     <div class="card">
-      <div class="required-grid">
-        <div class="field">
-          <label>Discipline coinvolte <span class="req">*</span></label>
-          <input type="text" id="udaDiscipline" placeholder="Es. Italiano, Storia, Arte e Immagine">
-        </div>
-        <div class="field">
-          <label>Competenza chiave europea prediletta <span class="req">*</span></label>
-          <select id="udaCompetenza">
-            <option value="">— Seleziona —</option>
-            <option>Competenza alfabetica funzionale</option>
-            <option>Competenza multilinguistica</option>
-            <option>Competenza matematica e competenza in scienze, tecnologie e ingegneria</option>
-            <option>Competenza digitale</option>
-            <option>Competenza personale, sociale e capacità di imparare a imparare</option>
-            <option>Competenza in materia di cittadinanza</option>
-            <option>Competenza imprenditoriale</option>
-            <option>Competenza in materia di consapevolezza ed espressione culturali</option>
-          </select>
+      <div class="field" style="margin-bottom:16px;">
+        <label>Discipline coinvolte <span class="req">*</span></label>
+        <input type="text" id="udaDiscipline" placeholder="Es. Italiano, Storia, Arte e Immagine">
+      </div>
+      <div class="field" style="margin-bottom:16px;">
+        <label>Competenze chiave europee — una o più, anche tutte e 8 <span class="req">*</span></label>
+        <div class="chip-panel show" id="udaCompetenzePanel">
+          <button type="button" class="chip" data-c="Competenza alfabetica funzionale" onclick="toggleUdaCompetenza(this)">Competenza alfabetica funzionale</button>
+          <button type="button" class="chip" data-c="Competenza multilinguistica" onclick="toggleUdaCompetenza(this)">Competenza multilinguistica</button>
+          <button type="button" class="chip" data-c="Competenza matematica e competenza in scienze, tecnologie e ingegneria" onclick="toggleUdaCompetenza(this)">Competenza matematica e competenza in scienze, tecnologie e ingegneria</button>
+          <button type="button" class="chip" data-c="Competenza digitale" onclick="toggleUdaCompetenza(this)">Competenza digitale</button>
+          <button type="button" class="chip" data-c="Competenza personale, sociale e capacità di imparare a imparare" onclick="toggleUdaCompetenza(this)">Competenza personale, sociale e capacità di imparare a imparare</button>
+          <button type="button" class="chip" data-c="Competenza in materia di cittadinanza" onclick="toggleUdaCompetenza(this)">Competenza in materia di cittadinanza</button>
+          <button type="button" class="chip" data-c="Competenza imprenditoriale" onclick="toggleUdaCompetenza(this)">Competenza imprenditoriale</button>
+          <button type="button" class="chip" data-c="Competenza in materia di consapevolezza ed espressione culturali" onclick="toggleUdaCompetenza(this)">Competenza in materia di consapevolezza ed espressione culturali</button>
         </div>
       </div>
       <div class="field" style="margin-bottom:16px;">
@@ -723,6 +720,37 @@ textarea{min-height:90px;line-height:1.55;resize:vertical;}
         <div class="chat-input-row">
           <textarea id="chatInput-uda" placeholder="Es. Aggiungi una fase di lavoro cooperativo a gruppi…"></textarea>
           <button class="btn sm accent" onclick="sendChatRequest('uda')">Invia</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3 style="font-size:17px;color:var(--brand-deep);margin-bottom:8px;">🎯 Griglia di valutazione specifica per questa UDA</h3>
+      <p class="sec-sub" style="margin-bottom:18px;">Una griglia pensata appositamente per gli obiettivi e le attività di questa UDA — non generica, ma coerente con la programmazione, il curricolo d'istituto e il riferimento normativo applicabile.</p>
+      <div class="row-actions">
+        <button class="btn accent" id="btnGenUdaGriglia" onclick="generateUdaGriglia()">✦ Genera griglia di valutazione per l'UDA</button>
+      </div>
+      <div class="muted" id="udaGrigliaStatus" style="margin-top:8px;"></div>
+      <div class="progress-wrap" id="progress-udaGriglia" style="display:none;">
+        <div class="progress-track"><div class="progress-fill" id="progress-fill-udaGriglia"></div></div>
+        <div class="progress-label" id="progress-label-udaGriglia"></div>
+      </div>
+
+      <div class="doc-toolbar"><strong style="font-size:13.5px;">Griglia di valutazione dell'UDA</strong></div>
+      <div class="doc-preview" id="udaGrigliaPreview" data-placeholder="La griglia di valutazione specifica per questa UDA apparirà qui…"></div>
+      <div class="row-actions">
+        <button class="btn ghost sm" onclick="toggleEdit('udaGrigliaPreview','btnEditUdaGriglia')" id="btnEditUdaGriglia">✎ Modifica</button>
+        <button class="btn accent sm" onclick="saveSection('udaGriglia','udaGrigliaPreview')">💾 Salva</button>
+        <button class="btn ghost sm" onclick="copyToClipboard('udaGrigliaPreview')">📋 Copia negli Appunti</button>
+        <button class="btn primary sm" onclick="downloadDoc('Griglia_Valutazione_UDA','udaGrigliaPreview')">⬇ Scarica</button>
+        <button class="btn ghost sm" onclick="downloadDocAsTable('Griglia_Valutazione_UDA','udaGrigliaPreview')">📊 Scarica come tabella</button>
+        <button class="btn ghost sm" onclick="toggleChat('udaGriglia')">💬 Chiedi modifiche all'IA</button>
+      </div>
+      <div class="ai-chat" id="chat-udaGriglia">
+        <div class="chat-msgs" id="chatMsgs-udaGriglia"></div>
+        <div class="chat-input-row">
+          <textarea id="chatInput-udaGriglia" placeholder="Es. Aggiungi un indicatore sulla capacità di lavorare in gruppo…"></textarea>
+          <button class="btn sm accent" onclick="sendChatRequest('udaGriglia')">Invia</button>
         </div>
       </div>
     </div>
@@ -782,11 +810,12 @@ async function stSet(key,value){
 let state = {
   provider:'gemini',
   ptof:{fileName:'', text:'', manualText:''},
-  priorities:'', curricolo:'', programmazione:'', valutazione:'', uda:'',
+  priorities:'', curricolo:'', programmazione:'', valutazione:'', uda:'', udaGriglia:'',
   existingDocs:{curricolo:'', programmazione:'', uda:''},
   selection:{ordine:'', classe:'', disciplina:''},
   ordiniAttivi:{infanzia:true, primaria:true, secondaria:true},
   valutazioneTipi:{diagnostica:true, iniziale:true, formativa:true, autovalutativa:true, metacognitiva:true, finale:true},
+  udaCompetenze:[],
   completed:{priorities:false, curricolo:false, programmazione:false, valutazione:false, uda:false}
 };
 async function loadState(){
@@ -1139,6 +1168,53 @@ function downloadDoc(filename, previewId){
 }
 // Converte il testo generato (titoli "## " + punti elenco) in una tabella a due colonne: Titolo | Contenuto
 function textToTableHtml(text){
+  // Se il testo contiene una o più tabelle in sintassi Markdown (righe con "|"), le converte in vere
+  // tabelle HTML (con intestazione evidenziata), mantenendo titoli/note come testo normale.
+  // Se non è presente nessuna tabella, ricade sul formato "Titolo | Contenuto" usato per gli altri documenti.
+  const hasMarkdownTable = /\n\s*\|.*\|\s*\n\s*\|[\s:-]+\|/.test('\n'+text);
+  if(hasMarkdownTable) return markdownAwareToHtml(text);
+  return titleContentTableHtml(text);
+}
+
+function markdownAwareToHtml(text){
+  const lines = text.split('\n');
+  let html = '';
+  let i = 0;
+  while(i < lines.length){
+    const line = lines[i];
+    const isTableHeader = /^\s*\|.*\|\s*$/.test(line) && i+1<lines.length && /^\s*\|?[\s:-]+\|/.test(lines[i+1]);
+    if(isTableHeader){
+      const splitCells = l => l.split('|').map(c=>c.trim()).filter((c,idx,arr)=> !(idx===0&&c==='') && !(idx===arr.length-1&&c===''));
+      const headerCells = splitCells(line);
+      i += 2; // salta la riga di separazione ---
+      const bodyRows = [];
+      while(i<lines.length && /^\s*\|.*\|\s*$/.test(lines[i])){
+        bodyRows.push(splitCells(lines[i]));
+        i++;
+      }
+      html += '<table style="width:100%;border-collapse:collapse;margin:10px 0 16px;">';
+      html += '<tr>'+headerCells.map(h=>'<th style="border:1px solid #999;padding:8px;background:#204F42;color:#fff;font-family:Calibri,Arial,sans-serif;font-size:12px;text-align:left;">'+escapeHtml(h)+'</th>').join('')+'</tr>';
+      bodyRows.forEach((row,ri)=>{
+        html += '<tr style="background:'+(ri%2===0?'#FFFFFF':'#F7F4EC')+';">'+row.map((c,idx)=>
+          '<td style="border:1px solid #999;padding:8px;vertical-align:top;font-family:Calibri,Arial,sans-serif;font-size:12px;'+(idx===0?'font-weight:bold;background:#EFEAE0;':'')+'">'+escapeHtml(c)+'</td>'
+        ).join('')+'</tr>';
+      });
+      html += '</table>';
+    } else if(/^#{1,3}\s/.test(line)){
+      html += '<h3 style="font-family:Calibri,Arial,sans-serif;color:#204F42;margin:18px 0 6px;">'+escapeHtml(line.replace(/^#{1,3}\s*/,''))+'</h3>';
+      i++;
+    } else if(/^[-•*]\s+/.test(line.trim())){
+      html += '<p style="font-family:Calibri,Arial,sans-serif;font-size:12.5px;margin:2px 0 2px 14px;">• '+escapeHtml(line.trim().replace(/^[-•*]\s+/,''))+'</p>';
+      i++;
+    } else if(line.trim()){
+      html += '<p style="font-family:Calibri,Arial,sans-serif;font-size:12.5px;margin:4px 0;">'+escapeHtml(line.trim())+'</p>';
+      i++;
+    } else { i++; }
+  }
+  return html;
+}
+
+function titleContentTableHtml(text){
   const blocks = text.split(/\n(?=#{1,3}\s)/);
   let rows = '';
   blocks.forEach(block=>{
@@ -1182,8 +1258,8 @@ function downloadDocAsTable(filename, previewId){
 /* =====================================================================
    CHAT IA RIUTILIZZABILE PER OGNI SEZIONE
    ===================================================================== */
-const chatHistory = {priorities:[], curricolo:[], programmazione:[], valutazione:[], uda:[]};
-const PREVIEW_BY_KEY = {priorities:'prioritiesPreview', curricolo:'curricoloPreview', programmazione:'programmazionePreview', valutazione:'valutazionePreview', uda:'udaPreview'};
+const chatHistory = {priorities:[], curricolo:[], programmazione:[], valutazione:[], uda:[], udaGriglia:[]};
+const PREVIEW_BY_KEY = {priorities:'prioritiesPreview', curricolo:'curricoloPreview', programmazione:'programmazionePreview', valutazione:'valutazionePreview', uda:'udaPreview', udaGriglia:'udaGrigliaPreview'};
 function toggleChat(key){
   document.getElementById('chat-'+key).classList.toggle('show');
 }
@@ -1360,6 +1436,17 @@ function pickDisciplina(el, d){
   state.selection.disciplina = d; saveState();
   renderAllRecaps();
 }
+function toggleUdaCompetenza(el){
+  const c = el.dataset.c;
+  el.classList.toggle('on');
+  if(!state.udaCompetenze) state.udaCompetenze = [];
+  if(el.classList.contains('on')){
+    if(!state.udaCompetenze.includes(c)) state.udaCompetenze.push(c);
+  }else{
+    state.udaCompetenze = state.udaCompetenze.filter(x=>x!==c);
+  }
+  saveState();
+}
 async function generateProgrammazione(){
   if(!state.curricolo){ toast('Genera prima il curricolo d\'Istituto (sezione precedente).', {err:true}); document.getElementById('sec3').scrollIntoView({behavior:'smooth'}); return; }
   const {ordine, classe, disciplina} = state.selection;
@@ -1423,7 +1510,7 @@ async function generateValutazione(){
     status.textContent = 'Generazione griglia: '+VALUTAZIONE_LABELS[tipo]+' ('+i+'/'+selected.length+')…';
     setProgress('valutazione', Math.round((i-1)/selected.length*100), 'Generazione griglia: '+VALUTAZIONE_LABELS[tipo]+' ('+i+'/'+selected.length+')');
     try{
-      const system = "Sei un esperto di valutazione scolastica in Italia. Genera UNA griglia di valutazione di tipo '"+VALUTAZIONE_LABELS[tipo]+"' per la disciplina '"+(disciplina||'(non specificata)')+"', "+(ORDINI[ordine]?ORDINI[ordine].label:'')+" "+(ordine&&classe?ORDINI[ordine].classi[classe]:'')+", riferimento "+(f==='2025'?'D.M. 221/2025':'D.M. 254/2012')+". La griglia deve avere indicatori osservabili e descrittori per 4 livelli (Iniziale, Base, Intermedio, Avanzato), presentata come tabella testuale, collegata agli OSA della programmazione e alle Competenze Chiave (D.M. 14/2024). Tieni conto del contesto classe e dell'attività indicata. Italiano, senza premesse.";
+      const system = "Sei un esperto di valutazione scolastica in Italia. Genera UNA griglia di valutazione di tipo '"+VALUTAZIONE_LABELS[tipo]+"' per la disciplina '"+(disciplina||'(non specificata)')+"', "+(ORDINI[ordine]?ORDINI[ordine].label:'')+" "+(ordine&&classe?ORDINI[ordine].classi[classe]:'')+", riferimento "+(f==='2025'?'D.M. 221/2025':'D.M. 254/2012')+". Collega gli indicatori agli OSA della programmazione e alle Competenze Chiave (D.M. 14/2024). Tieni conto del contesto classe e dell'attività indicata.\n\nFORMATO OBBLIGATORIO: presenta la griglia come una tabella in sintassi Markdown con il carattere pipe (|), con questa struttura esatta:\n| Indicatore | Iniziale | Base | Intermedio | Avanzato |\n|---|---|---|---|---|\n| ... | ... | ... | ... | ... |\n(una riga per ogni indicatore, 4-6 indicatori). Dopo la tabella aggiungi 2-3 note operative in punti elenco (non in tabella). Italiano, senza premesse.";
       const user = "ATTIVITÀ/PERCORSO:\n"+(attivita||'(non specificata)')+"\n\nPROGRAMMAZIONE DI RIFERIMENTO (estratto):\n"+state.programmazione.slice(0,2200);
       full += "## GRIGLIA "+VALUTAZIONE_LABELS[tipo].toUpperCase()+"\n" + await callBackend(system, user, 2500) + "\n\n";
     }catch(e){
@@ -1445,10 +1532,11 @@ async function generateValutazione(){
    ===================================================================== */
 async function generateUda(){
   const discipline = document.getElementById('udaDiscipline').value.trim();
-  const competenza = document.getElementById('udaCompetenza').value;
+  const competenze = state.udaCompetenze || [];
   const bes = document.getElementById('udaBes').value.trim();
   const richiesta = document.getElementById('udaRichiesta').value.trim();
-  if(!discipline || !competenza || !richiesta){ toast('Compila i campi obbligatori: discipline coinvolte, competenza chiave e richiesta.', {err:true}); return; }
+  if(!discipline || !competenze.length || !richiesta){ toast('Compila i campi obbligatori: discipline coinvolte, almeno una competenza chiave e richiesta.', {err:true}); return; }
+  const competenza = competenze.join(', ');
   const btn = document.getElementById('btnGenUda'); btn.disabled=true;
   document.getElementById('udaStatus').textContent = 'Generazione UDA in corso…';
   const timer = startIndeterminateProgress('uda', 'Generazione della progettazione UDA in corso…');
@@ -1456,8 +1544,8 @@ async function generateUda(){
     const {ordine, classe} = state.selection;
     const f = frameworkFor(ordine||'primaria', classe||'p2');
     const existing = state.existingDocs.uda;
-    const system = "Sei un esperto di progettazione didattica per Unità di Apprendimento (UDA) nella scuola italiana. "+(existing ? "Il docente possiede già una progettazione (fornita sotto): il tuo compito è ADATTARLA alle indicazioni normative applicabili e alla richiesta, mantenendo quanto valido e integrando quanto manca. " : "Genera una progettazione UDA completa ")+"rispondendo alle quattro domande guida (quali obiettivi, quali esperienze, come organizzarle, come accertare i risultati). Includi: Contesto classe, Conoscenze (rilevanti/significative/essenziali), Obiettivi e Competenze (OSA coerenti con la competenza chiave indicata), Metodologie e Strategie, Strumenti e Risorse, e — se sono presenti alunni BES — personalizzazione coerente con quanto dichiarato nel PEI/PDP. Riferimento normativo: "+(f==='2025'?'D.M. 221/2025 — '+SINTESI_2025:'D.M. 254/2012 — '+(SINTESI_2012[discipline.split(',')[0].trim()]||''))+". Formato a titoli e punti elenco, italiano, senza premesse.";
-    const user = (existing ? "PROGETTAZIONE GIÀ IN POSSESSO DEL DOCENTE (da adattare):\n"+existing.slice(0,3000)+"\n\n" : "")+"DISCIPLINE COINVOLTE: "+discipline+"\nCOMPETENZA CHIAVE PREDILETTA: "+competenza+"\nALUNNI BES (PEI/PDP): "+(bes||'nessuno segnalato')+"\n\nCURRICOLO/PROGRAMMAZIONE DI RIFERIMENTO (estratto):\n"+(state.programmazione||state.curricolo||'').slice(0,2000)+"\n\nRICHIESTA DEL DOCENTE:\n"+richiesta;
+    const system = "Sei un esperto di progettazione didattica per Unità di Apprendimento (UDA) nella scuola italiana. "+(existing ? "Il docente possiede già una progettazione (fornita sotto): il tuo compito è ADATTARLA alle indicazioni normative applicabili e alla richiesta, mantenendo quanto valido e integrando quanto manca. " : "Genera una progettazione UDA completa ")+"rispondendo alle quattro domande guida (quali obiettivi, quali esperienze, come organizzarle, come accertare i risultati). Includi: Contesto classe, Conoscenze (rilevanti/significative/essenziali), Obiettivi e Competenze (OSA coerenti con la/le competenza/e chiave indicata/e), Metodologie e Strategie, Strumenti e Risorse, e — se sono presenti alunni BES — personalizzazione coerente con quanto dichiarato nel PEI/PDP. Riferimento normativo: "+(f==='2025'?'D.M. 221/2025 — '+SINTESI_2025:'D.M. 254/2012 — '+(SINTESI_2012[discipline.split(',')[0].trim()]||''))+". Formato a titoli e punti elenco, italiano, senza premesse.";
+    const user = (existing ? "PROGETTAZIONE GIÀ IN POSSESSO DEL DOCENTE (da adattare):\n"+existing.slice(0,3000)+"\n\n" : "")+"DISCIPLINE COINVOLTE: "+discipline+"\nCOMPETENZE CHIAVE PREDILETTE: "+competenza+"\nALUNNI BES (PEI/PDP): "+(bes||'nessuno segnalato')+"\n\nCURRICOLO/PROGRAMMAZIONE DI RIFERIMENTO (estratto):\n"+(state.programmazione||state.curricolo||'').slice(0,2000)+"\n\nRICHIESTA DEL DOCENTE:\n"+richiesta;
     const out = await callBackend(system, user, 4500);
     document.getElementById('udaPreview').innerText = out;
     state.uda = out; await saveState();
@@ -1467,6 +1555,28 @@ async function generateUda(){
     toast(e.message, {err:true, duration:6000});
     document.getElementById('udaStatus').textContent = '';
     abortProgress('uda', timer);
+  }finally{ btn.disabled=false; }
+}
+
+async function generateUdaGriglia(){
+  if(!state.uda){ toast('Genera prima la progettazione UDA qui sopra.', {err:true}); return; }
+  const {ordine, classe, disciplina} = state.selection;
+  const f = frameworkFor(ordine||'primaria', classe||'p2');
+  const btn = document.getElementById('btnGenUdaGriglia'); btn.disabled=true;
+  document.getElementById('udaGrigliaStatus').textContent = 'Generazione griglia in corso…';
+  const timer = startIndeterminateProgress('udaGriglia', 'Generazione della griglia per l\'UDA in corso…');
+  try{
+    const system = "Sei un esperto di valutazione scolastica in Italia. Genera una griglia di valutazione autentica, pensata specificamente per la Unità di Apprendimento (UDA) fornita sotto — non una griglia generica di disciplina, ma coerente con gli obiettivi, le competenze e le attività proprie di QUESTA UDA. Deve essere coerente anche con la programmazione disciplinare, il curricolo d'istituto e il riferimento normativo applicabile ("+(f==='2025'?'D.M. 221/2025':'D.M. 254/2012')+", competenze chiave D.M. 14/2024).\n\nFORMATO OBBLIGATORIO: presenta la griglia come tabella in sintassi Markdown con il carattere pipe (|):\n| Indicatore | Iniziale | Base | Intermedio | Avanzato |\n|---|---|---|---|---|\n| ... | ... | ... | ... | ... |\n(4-6 indicatori, derivati dagli obiettivi/competenze specifici dell'UDA). Dopo la tabella aggiungi 2-3 note su come condividere la valutazione con studenti e famiglie. Italiano, senza premesse.";
+    const user = "PROGETTAZIONE UDA DA VALUTARE:\n"+state.uda.slice(0,3000)+"\n\nPROGRAMMAZIONE DISCIPLINARE DI RIFERIMENTO (estratto):\n"+(state.programmazione||'').slice(0,1500)+"\n\nCURRICOLO D'ISTITUTO (estratto, disciplina "+(disciplina||'')+"):\n"+extractRelevant(disciplina||'')+"\n\nPRIORITÀ D'ISTITUTO:\n"+(state.priorities||'(nessuna)');
+    const out = await callBackend(system, user, 3000);
+    document.getElementById('udaGrigliaPreview').innerText = out;
+    state.udaGriglia = out; await saveState();
+    document.getElementById('udaGrigliaStatus').textContent = 'Griglia generata.';
+    finishProgress('udaGriglia', timer);
+  }catch(e){
+    toast(e.message, {err:true, duration:6000});
+    document.getElementById('udaGrigliaStatus').textContent = '';
+    abortProgress('udaGriglia', timer);
   }finally{ btn.disabled=false; }
 }
 
@@ -1496,6 +1606,7 @@ async function init(){
   document.getElementById('programmazionePreview').innerText = state.programmazione || '';
   document.getElementById('valutazionePreview').innerText = state.valutazione || '';
   document.getElementById('udaPreview').innerText = state.uda || '';
+  document.getElementById('udaGrigliaPreview').innerText = state.udaGriglia || '';
 
   EXISTING_KEYS.forEach(key=>{
     const text = state.existingDocs[key];
@@ -1504,6 +1615,11 @@ async function init(){
       const manualTa = document.getElementById('existingManualText-'+key);
       if(manualTa) manualTa.value = text;
     }
+  });
+
+  (state.udaCompetenze||[]).forEach(c=>{
+    const chip = document.querySelector('#udaCompetenzePanel .chip[data-c="'+c.replace(/"/g,'\\"')+'"]');
+    if(chip) chip.classList.add('on');
   });
 
   Object.keys(state.ordiniAttivi).forEach(ord=>{
