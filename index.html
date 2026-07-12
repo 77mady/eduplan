@@ -187,6 +187,12 @@ textarea{min-height:90px;line-height:1.55;resize:vertical;}
 .chip{padding:8px 14px;border-radius:20px;border:1.5px solid var(--line);background:#fff;font-size:12.5px;font-weight:600;color:var(--ink-soft);}
 .chip.on{border-color:var(--plum);background:var(--plum-soft);color:var(--plum);}
 .recap-row{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:28px;}
+.progress-wrap{margin-top:12px;}
+.progress-track{height:10px;border-radius:6px;background:var(--brand-soft);overflow:hidden;}
+.progress-fill{height:100%;background:linear-gradient(90deg,var(--brand),var(--accent));border-radius:6px;width:5%;transition:width .3s ease;}
+.progress-label{font-size:12px;color:var(--ink-soft);margin-top:6px;}
+.existing-doc-card{background:#FCFAF3;border:1px dashed #B8B097;border-radius:12px;padding:18px 20px;margin-bottom:18px;}
+.existing-doc-card h4{font-size:13.5px;color:var(--brand-deep);margin-bottom:6px;}
 
 .doc-toolbar{display:flex;justify-content:space-between;align-items:center;gap:12px;margin:18px 0 8px;flex-wrap:wrap;}
 .doc-preview{
@@ -250,10 +256,21 @@ textarea{min-height:90px;line-height:1.55;resize:vertical;}
     <button class="modal-close" onclick="closeSettings()">×</button>
     <h3>Impostazioni</h3>
     <p>La chiave Gemini è configurata in modo sicuro sul server e non è mai visibile né richiesta qui: non devi inserire nulla. Il sistema sceglie e cambia da solo il modello più adatto in caso di sovraccarico, e riprova automaticamente in caso di errori temporanei — non devi fare nulla.</p>
+    <div class="field">
+      <label>Motore IA</label>
+      <select id="providerSelect" onchange="saveProviderChoice()">
+        <option value="gemini">Google Gemini (predefinito)</option>
+        <option value="mistral">Mistral</option>
+      </select>
+    </div>
     <div class="row-actions">
       <button class="btn ghost sm" onclick="testConnection()">🔌 Testa connessione</button>
     </div>
     <div class="muted" id="settingsStatus" style="margin-top:10px;"></div>
+    <div style="border-top:1px solid var(--line);margin-top:18px;padding-top:16px;">
+      <p style="margin-bottom:10px;">I documenti generati restano salvati in questo browser da una visita all'altra. Se vuoi ripartire da zero (es. per un'altra scuola o un'altra prova):</p>
+      <button class="btn ghost sm" onclick="resetAll()" style="color:var(--danger);border-color:#E3B8B3;">🗑 Ricomincia da capo (cancella tutto)</button>
+    </div>
   </div>
 </div>
 
@@ -318,6 +335,10 @@ textarea{min-height:90px;line-height:1.55;resize:vertical;}
         <button class="btn accent" id="btnGenPriorities" onclick="generatePriorities()">✦ Genera/visualizza priorità</button>
         <span class="muted" id="prioritiesStatus"></span>
       </div>
+      <div class="progress-wrap" id="progress-priorities" style="display:none;">
+        <div class="progress-track"><div class="progress-fill" id="progress-fill-priorities"></div></div>
+        <div class="progress-label" id="progress-label-priorities"></div>
+      </div>
 
       <div class="doc-toolbar"><strong style="font-size:13.5px;">Priorità generate</strong></div>
       <div class="doc-preview" id="prioritiesPreview" data-placeholder="Le priorità generate dall'IA appariranno qui…"></div>
@@ -351,6 +372,20 @@ textarea{min-height:90px;line-height:1.55;resize:vertical;}
     <h2 class="sec-title">Dal PTOF al Curricolo</h2>
     <p class="sec-sub">Sulla base del PTOF caricato e delle Indicazioni Nazionali applicabili, la piattaforma genera automaticamente il Curricolo Verticale d'Istituto, personalizzato sul contesto della tua scuola.</p>
 
+    <div class="existing-doc-card">
+      <h4>📎 Hai già un curricolo d'istituto?</h4>
+      <p class="muted" style="margin-bottom:10px;">Se possiedi già un curricolo, allegalo o incollalo qui sotto: cliccando "Genera", l'IA lo adatterà alle Indicazioni Nazionali applicabili invece di crearne uno da zero.</p>
+      <div class="dropzone" id="dropzone-existing-curricolo">
+        <div><strong>Trascina qui il file</strong> oppure clicca per selezionarlo<br><span class="muted">PDF, Word o testo</span></div>
+        <input type="file" id="existingInput-curricolo" accept=".pdf,.docx,.doc,.txt,.md" style="display:none;">
+      </div>
+      <div id="existingChip-curricolo"></div>
+      <button type="button" class="btn ghost sm" style="margin-top:10px;" onclick="toggleManualExisting('curricolo')">Oppure incolla il testo</button>
+      <div class="field" id="existingManualField-curricolo" style="display:none;margin-top:10px;">
+        <textarea id="existingManualText-curricolo" placeholder="…incolla qui il testo del curricolo che possiedi già"></textarea>
+      </div>
+    </div>
+
     <div class="card">
       <div class="toggle-row" id="ordiniToggleRow">
         <button class="toggle-card on" data-ord="infanzia" onclick="toggleOrdine(this,'infanzia')">
@@ -374,6 +409,10 @@ textarea{min-height:90px;line-height:1.55;resize:vertical;}
         <button class="btn accent" id="btnGenCurricolo" onclick="generateCurricolo()">✦ Genera / visualizza Anteprima</button>
       </div>
       <div class="muted" id="curricoloStatus" style="margin-top:8px;"></div>
+      <div class="progress-wrap" id="progress-curricolo" style="display:none;">
+        <div class="progress-track"><div class="progress-fill" id="progress-fill-curricolo"></div></div>
+        <div class="progress-label" id="progress-label-curricolo"></div>
+      </div>
 
       <div class="doc-toolbar"><strong style="font-size:13.5px;">Curricolo Verticale d'Istituto</strong></div>
       <div class="doc-preview" id="curricoloPreview" data-placeholder="Il curricolo generato apparirà qui, organizzato per ordine e disciplina…"></div>
@@ -382,6 +421,7 @@ textarea{min-height:90px;line-height:1.55;resize:vertical;}
         <button class="btn accent sm" onclick="saveSection('curricolo','curricoloPreview')">💾 Salva</button>
         <button class="btn ghost sm" onclick="copyToClipboard('curricoloPreview')">📋 Copia negli Appunti</button>
         <button class="btn primary sm" onclick="downloadDoc('Curricolo_Istituto','curricoloPreview')">⬇ Scarica curricolo</button>
+        <button class="btn ghost sm" onclick="downloadDocAsTable('Curricolo_Istituto','curricoloPreview')">📊 Scarica come tabella</button>
         <button class="btn ghost sm" onclick="toggleChat('curricolo')">💬 Chiedi modifiche all'IA</button>
       </div>
       <div class="ai-chat" id="chat-curricolo">
@@ -456,6 +496,21 @@ textarea{min-height:90px;line-height:1.55;resize:vertical;}
 
       <h3 style="font-size:18px;color:var(--brand-deep);margin:30px 0 8px;">Verso una classe inclusiva</h3>
       <p class="sec-sub" style="margin-bottom:14px;">Ogni metodologia, strategia e strumento deve essere calibrato sul contesto classe e sulla disciplina selezionata: ciò determina il successo formativo di ciascuno studente.</p>
+
+      <div class="existing-doc-card">
+        <h4>📎 Hai già una programmazione disciplinare?</h4>
+        <p class="muted" style="margin-bottom:10px;">Allegala o incollala: l'IA la adatterà alle Indicazioni Nazionali applicabili invece di crearne una da zero.</p>
+        <div class="dropzone" id="dropzone-existing-programmazione">
+          <div><strong>Trascina qui il file</strong> oppure clicca per selezionarlo<br><span class="muted">PDF, Word o testo</span></div>
+          <input type="file" id="existingInput-programmazione" accept=".pdf,.docx,.doc,.txt,.md" style="display:none;">
+        </div>
+        <div id="existingChip-programmazione"></div>
+        <button type="button" class="btn ghost sm" style="margin-top:10px;" onclick="toggleManualExisting('programmazione')">Oppure incolla il testo</button>
+        <div class="field" id="existingManualField-programmazione" style="display:none;margin-top:10px;">
+          <textarea id="existingManualText-programmazione" placeholder="…incolla qui il testo della programmazione che possiedi già"></textarea>
+        </div>
+      </div>
+
       <div class="field">
         <label>Descrizione della classe (inclusi eventuali alunni BES)</label>
         <textarea id="contestoClasse" placeholder="Es. Classe di 20 alunni con buon clima relazionale; presente un alunno con DSA (dislessia) con PDP attivo che utilizza mappe concettuali e sintesi vocale; un'alunna con background migratorio in fase di alfabetizzazione dell'italiano L2; disponibilità di un laboratorio informatico due ore a settimana."></textarea>
@@ -465,6 +520,10 @@ textarea{min-height:90px;line-height:1.55;resize:vertical;}
         <button class="btn accent" id="btnGenProgrammazione" onclick="generateProgrammazione()">✦ Genera / visualizza Anteprima</button>
       </div>
       <div class="muted" id="programmazioneStatus" style="margin-top:8px;"></div>
+      <div class="progress-wrap" id="progress-programmazione" style="display:none;">
+        <div class="progress-track"><div class="progress-fill" id="progress-fill-programmazione"></div></div>
+        <div class="progress-label" id="progress-label-programmazione"></div>
+      </div>
 
       <div class="doc-toolbar"><strong style="font-size:13.5px;">Programmazione disciplinare</strong></div>
       <div class="doc-preview" id="programmazionePreview" data-placeholder="La programmazione generata dall'IA apparirà qui…"></div>
@@ -473,6 +532,7 @@ textarea{min-height:90px;line-height:1.55;resize:vertical;}
         <button class="btn accent sm" onclick="saveSection('programmazione','programmazionePreview')">💾 Salva</button>
         <button class="btn ghost sm" onclick="copyToClipboard('programmazionePreview')">📋 Copia negli Appunti</button>
         <button class="btn primary sm" onclick="downloadDoc('Programmazione_Disciplinare','programmazionePreview')">⬇ Salva e scarica curricolo</button>
+        <button class="btn ghost sm" onclick="downloadDocAsTable('Programmazione_Disciplinare','programmazionePreview')">📊 Scarica come tabella</button>
         <button class="btn ghost sm" onclick="toggleChat('programmazione')">💬 Chiedi modifiche all'IA</button>
       </div>
       <div class="ai-chat" id="chat-programmazione">
@@ -554,6 +614,10 @@ textarea{min-height:90px;line-height:1.55;resize:vertical;}
         <button class="btn accent" id="btnGenValutazione" onclick="generateValutazione()">✦ Genera / visualizza Anteprima</button>
       </div>
       <div class="muted" id="valutazioneStatus" style="margin-top:8px;"></div>
+      <div class="progress-wrap" id="progress-valutazione" style="display:none;">
+        <div class="progress-track"><div class="progress-fill" id="progress-fill-valutazione"></div></div>
+        <div class="progress-label" id="progress-label-valutazione"></div>
+      </div>
       <div class="doc-toolbar"><strong style="font-size:13.5px;">Griglie generate</strong></div>
       <div class="doc-preview" id="valutazionePreview" data-placeholder="Le griglie di valutazione generate dall'IA appariranno qui…"></div>
       <div class="row-actions">
@@ -561,6 +625,7 @@ textarea{min-height:90px;line-height:1.55;resize:vertical;}
         <button class="btn accent sm" onclick="saveSection('valutazione','valutazionePreview')">💾 Salva</button>
         <button class="btn ghost sm" onclick="copyToClipboard('valutazionePreview')">📋 Copia negli Appunti</button>
         <button class="btn primary sm" onclick="downloadDoc('Griglie_Valutazione','valutazionePreview')">⬇ Salva e scarica</button>
+        <button class="btn ghost sm" onclick="downloadDocAsTable('Griglie_Valutazione','valutazionePreview')">📊 Scarica come tabella</button>
         <button class="btn ghost sm" onclick="toggleChat('valutazione')">💬 Chiedi modifiche all'IA</button>
       </div>
       <div class="ai-chat" id="chat-valutazione">
@@ -589,6 +654,20 @@ textarea{min-height:90px;line-height:1.55;resize:vertical;}
     <div class="recap-row" id="recap-sec6"></div>
 
     <div class="note-box" style="margin-bottom:26px;">Le quattro domande-guida della progettazione: <strong>Quali obiettivi? Quali esperienze? Come organizzarle? Come accertare i risultati?</strong></div>
+
+    <div class="existing-doc-card">
+      <h4>📎 Hai già una progettazione UDA?</h4>
+      <p class="muted" style="margin-bottom:10px;">Allegala o incollala: l'IA la adatterà alle Indicazioni Nazionali applicabili invece di crearne una da zero.</p>
+      <div class="dropzone" id="dropzone-existing-uda">
+        <div><strong>Trascina qui il file</strong> oppure clicca per selezionarlo<br><span class="muted">PDF, Word o testo</span></div>
+        <input type="file" id="existingInput-uda" accept=".pdf,.docx,.doc,.txt,.md" style="display:none;">
+      </div>
+      <div id="existingChip-uda"></div>
+      <button type="button" class="btn ghost sm" style="margin-top:10px;" onclick="toggleManualExisting('uda')">Oppure incolla il testo</button>
+      <div class="field" id="existingManualField-uda" style="display:none;margin-top:10px;">
+        <textarea id="existingManualText-uda" placeholder="…incolla qui il testo della progettazione che possiedi già"></textarea>
+      </div>
+    </div>
 
     <div class="card">
       <div class="required-grid">
@@ -624,6 +703,10 @@ textarea{min-height:90px;line-height:1.55;resize:vertical;}
         <button class="btn accent" id="btnGenUda" onclick="generateUda()">✦ Genera / visualizza Anteprima</button>
       </div>
       <div class="muted" id="udaStatus" style="margin-top:8px;"></div>
+      <div class="progress-wrap" id="progress-uda" style="display:none;">
+        <div class="progress-track"><div class="progress-fill" id="progress-fill-uda"></div></div>
+        <div class="progress-label" id="progress-label-uda"></div>
+      </div>
 
       <div class="doc-toolbar"><strong style="font-size:13.5px;">Progettazione UDA</strong></div>
       <div class="doc-preview" id="udaPreview" data-placeholder="La progettazione UDA generata dall'IA apparirà qui…"></div>
@@ -632,6 +715,7 @@ textarea{min-height:90px;line-height:1.55;resize:vertical;}
         <button class="btn accent sm" onclick="saveSection('uda','udaPreview')">💾 Salva</button>
         <button class="btn ghost sm" onclick="copyToClipboard('udaPreview')">📋 Copia negli Appunti</button>
         <button class="btn primary sm" onclick="downloadDoc('Progettazione_UDA','udaPreview')">⬇ Salva e scarica UDA</button>
+        <button class="btn ghost sm" onclick="downloadDocAsTable('Progettazione_UDA','udaPreview')">📊 Scarica come tabella</button>
         <button class="btn ghost sm" onclick="toggleChat('uda')">💬 Chiedi modifiche all'IA</button>
       </div>
       <div class="ai-chat" id="chat-uda">
@@ -696,8 +780,10 @@ async function stSet(key,value){
 }
 
 let state = {
+  provider:'gemini',
   ptof:{fileName:'', text:'', manualText:''},
   priorities:'', curricolo:'', programmazione:'', valutazione:'', uda:'',
+  existingDocs:{curricolo:'', programmazione:'', uda:''},
   selection:{ordine:'', classe:'', disciplina:''},
   ordiniAttivi:{infanzia:true, primaria:true, secondaria:true},
   valutazioneTipi:{diagnostica:true, iniziale:true, formativa:true, autovalutativa:true, metacognitiva:true, finale:true},
@@ -705,7 +791,12 @@ let state = {
 };
 async function loadState(){
   const raw = await stGet('eduplan-state');
-  if(raw){ try{ state = Object.assign(state, JSON.parse(raw)); if(!state.completed) state.completed={priorities:false,curricolo:false,programmazione:false,valutazione:false,uda:false}; }catch(e){} }
+  if(raw){ try{
+    state = Object.assign(state, JSON.parse(raw));
+    if(!state.completed) state.completed={priorities:false,curricolo:false,programmazione:false,valutazione:false,uda:false};
+    if(!state.existingDocs) state.existingDocs={curricolo:'',programmazione:'',uda:''};
+    if(!state.provider) state.provider='gemini';
+  }catch(e){} }
 }
 async function saveState(){ await stSet('eduplan-state', JSON.stringify(state)); }
 
@@ -759,21 +850,35 @@ function navGuard(sectionId, ev){
    SETTINGS MODAL
    ===================================================================== */
 function openSettings(){
+  document.getElementById('providerSelect').value = state.provider || 'gemini';
   document.getElementById('settingsStatus').textContent = '';
   document.getElementById('settingsModal').classList.add('show');
 }
 function closeSettings(){ document.getElementById('settingsModal').classList.remove('show'); }
+async function saveProviderChoice(){
+  state.provider = document.getElementById('providerSelect').value;
+  await saveState();
+  document.getElementById('settingsStatus').textContent = 'Motore impostato: ' + (state.provider==='mistral'?'Mistral':'Google Gemini') + ' ✓';
+}
+async function resetAll(){
+  const ok = confirm('Vuoi davvero cancellare tutti i dati (PTOF, priorità, curricolo, programmazione, valutazione, UDA) e ricominciare da capo? Non si può annullare.');
+  if(!ok) return;
+  try{ if(HAS_WS){ await window.storage.delete('eduplan-state', false); } }catch(e){}
+  try{ window.localStorage.removeItem('eduplan-state'); }catch(e){}
+  location.reload();
+}
 async function testConnection(){
   const status = document.getElementById('settingsStatus');
+  const provider = document.getElementById('providerSelect').value;
   status.textContent = 'Test in corso…';
   try{
-    const res = await fetch('/api/generate');
+    const res = await fetch('/api/generate?provider='+encodeURIComponent(provider));
     const data = await res.json().catch(()=>({}));
     if(!res.ok){
       status.textContent = '❌ '+(data.error || ('Errore '+res.status));
       return;
     }
-    status.textContent = '✅ Il server e la chiave funzionano correttamente.';
+    status.textContent = '✅ Il server e la chiave ('+(provider==='mistral'?'Mistral':'Gemini')+') funzionano correttamente.';
   }catch(e){
     status.textContent = window.location.protocol==='file:'
       ? '❌ Stai aprendo il file dal computer: questa versione funziona solo una volta pubblicata online (vedi guida).'
@@ -847,6 +952,50 @@ function toggleManualPtof(){
 document.getElementById('ptofManualText').addEventListener('input', e=>{ state.ptof.manualText = e.target.value; saveState(); });
 
 /* =====================================================================
+   DOCUMENTI GIÀ ESISTENTI (Curricolo / Programmazione / UDA)
+   ===================================================================== */
+const EXISTING_KEYS = ['curricolo','programmazione','uda'];
+function setupExistingDoc(key){
+  const dz = document.getElementById('dropzone-existing-'+key);
+  const input = document.getElementById('existingInput-'+key);
+  if(!dz || !input) return;
+  dz.addEventListener('click', ()=>input.click());
+  ['dragenter','dragover'].forEach(ev=>dz.addEventListener(ev,e=>{e.preventDefault();dz.classList.add('drag');}));
+  ['dragleave','drop'].forEach(ev=>dz.addEventListener(ev,e=>{e.preventDefault();dz.classList.remove('drag');}));
+  dz.addEventListener('drop', e=>{ if(e.dataTransfer.files.length) handleExistingFile(key, e.dataTransfer.files[0]); });
+  input.addEventListener('change', e=>{ if(e.target.files.length) handleExistingFile(key, e.target.files[0]); });
+  const manualTa = document.getElementById('existingManualText-'+key);
+  if(manualTa){
+    manualTa.addEventListener('input', e=>{
+      state.existingDocs[key] = e.target.value;
+      saveState();
+    });
+  }
+}
+async function handleExistingFile(key, file){
+  const t = toast('Lettura di "'+file.name+'"…', {loading:true, sticky:true});
+  const text = await readAnyFile(file);
+  t.remove();
+  if(!text){ return; }
+  state.existingDocs[key] = text;
+  await saveState();
+  document.getElementById('existingChip-'+key).innerHTML = `<div class="file-chip">📎 ${file.name} <button onclick="clearExistingDoc('${key}')">×</button></div>`;
+  toast('Documento acquisito — verrà usato come base per l\'adattamento.', {ok:true});
+}
+function clearExistingDoc(key){
+  state.existingDocs[key] = '';
+  document.getElementById('existingChip-'+key).innerHTML = '';
+  const manualTa = document.getElementById('existingManualText-'+key);
+  if(manualTa) manualTa.value = '';
+  saveState();
+}
+function toggleManualExisting(key){
+  const f = document.getElementById('existingManualField-'+key);
+  f.style.display = (f.style.display==='none') ? 'block':'none';
+}
+EXISTING_KEYS.forEach(setupExistingDoc);
+
+/* =====================================================================
    CHIAMATA AL BACKEND (funzione serverless — la chiave resta sul server)
    ===================================================================== */
 async function callBackend(systemInstruction, userText, maxOutputTokens=3000){
@@ -855,7 +1004,7 @@ async function callBackend(systemInstruction, userText, maxOutputTokens=3000){
     res = await fetch('/api/generate', {
       method:'POST',
       headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({systemInstruction, userText, maxOutputTokens})
+      body: JSON.stringify({systemInstruction, userText, maxOutputTokens, provider: state.provider||'gemini'})
     });
   }catch(networkErr){
     if(window.location.protocol === 'file:'){
@@ -884,6 +1033,45 @@ function toggleEdit(previewId, btnId){
   document.getElementById(btnId).textContent = editing ? labels[btnId] : '✓ Fine modifica';
   if(!editing) el.focus();
 }
+/* =====================================================================
+   BARRA DI AVANZAMENTO
+   ===================================================================== */
+function showProgress(key){
+  const wrap = document.getElementById('progress-'+key);
+  if(wrap) wrap.style.display='block';
+}
+function setProgress(key, pct, label){
+  const fill = document.getElementById('progress-fill-'+key);
+  const lbl = document.getElementById('progress-label-'+key);
+  if(fill) fill.style.width = Math.max(4,Math.min(100,pct))+'%';
+  if(lbl && label!==undefined) lbl.textContent = label;
+}
+function hideProgress(key){
+  const wrap = document.getElementById('progress-'+key);
+  if(wrap) wrap.style.display='none';
+}
+// Per le generazioni con un'unica chiamata (non suddivise in passaggi), simula un avanzamento
+// graduale finché la risposta non arriva, per far capire chiaramente che il sistema sta lavorando.
+function startIndeterminateProgress(key, label){
+  showProgress(key);
+  let pct = 6;
+  setProgress(key, pct, label);
+  const timer = setInterval(()=>{
+    pct += (92-pct)*0.06;
+    setProgress(key, pct, label);
+  }, 400);
+  return timer;
+}
+function finishProgress(key, timer){
+  if(timer) clearInterval(timer);
+  setProgress(key, 100, 'Completato ✓');
+  setTimeout(()=>hideProgress(key), 700);
+}
+function abortProgress(key, timer){
+  if(timer) clearInterval(timer);
+  hideProgress(key);
+}
+
 async function copyToClipboard(previewId){
   const text = document.getElementById(previewId).innerText;
   if(!text || !text.trim()){ toast('Non c\'è ancora nulla da copiare.', {err:true}); return; }
@@ -949,6 +1137,47 @@ function downloadDoc(filename, previewId){
   const a = document.createElement('a'); a.href=url; a.download=filename+'.doc'; a.click();
   URL.revokeObjectURL(url);
 }
+// Converte il testo generato (titoli "## " + punti elenco) in una tabella a due colonne: Titolo | Contenuto
+function textToTableHtml(text){
+  const blocks = text.split(/\n(?=#{1,3}\s)/);
+  let rows = '';
+  blocks.forEach(block=>{
+    const lines = block.trim().split('\n').filter(l=>l.trim());
+    if(!lines.length) return;
+    const title = lines[0].replace(/^#{1,3}\s*/,'').trim();
+    const contentLines = lines.slice(1);
+    if(!title && !contentLines.length) return;
+    let contentHtml = '';
+    let inList = false;
+    contentLines.forEach(l=>{
+      const trimmed = l.trim();
+      const isBullet = /^[-•*]\s+/.test(trimmed) || /^\d+[\.\)]\s+/.test(trimmed);
+      if(isBullet){
+        if(!inList){ contentHtml += '<ul style="margin:4px 0;padding-left:18px;">'; inList = true; }
+        contentHtml += '<li>'+escapeHtml(trimmed.replace(/^[-•*]\s+/,'').replace(/^\d+[\.\)]\s+/,''))+'</li>';
+      } else {
+        if(inList){ contentHtml += '</ul>'; inList = false; }
+        contentHtml += '<p style="margin:4px 0;">'+escapeHtml(trimmed)+'</p>';
+      }
+    });
+    if(inList) contentHtml += '</ul>';
+    rows += '<tr>'+
+      '<td style="border:1px solid #999;padding:9px;font-weight:bold;vertical-align:top;width:26%;background:#EFEAE0;font-family:Calibri,Arial,sans-serif;font-size:12px;">'+escapeHtml(title||'—')+'</td>'+
+      '<td style="border:1px solid #999;padding:9px;vertical-align:top;font-family:Calibri,Arial,sans-serif;font-size:12px;">'+(contentHtml||'&nbsp;')+'</td>'+
+      '</tr>';
+  });
+  return '<table style="width:100%;border-collapse:collapse;">'+rows+'</table>';
+}
+function downloadDocAsTable(filename, previewId){
+  const text = document.getElementById(previewId).innerText;
+  if(!text || !text.trim()){ toast('Genera prima il contenuto.', {err:true}); return; }
+  const tableHtml = textToTableHtml(text);
+  const pre = "<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'><head><meta charset='utf-8'><title>"+filename+"</title></head><body>"+tableHtml+"</body></html>";
+  const blob = new Blob(['\ufeff', pre], {type:'application/msword'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href=url; a.download=filename+'_tabella.doc'; a.click();
+  URL.revokeObjectURL(url);
+}
 
 /* =====================================================================
    CHAT IA RIUTILIZZABILE PER OGNI SEZIONE
@@ -973,20 +1202,29 @@ async function sendChatRequest(key){
   input.value='';
   chatHistory[key].push({role:'user', text});
   renderChatMsgs(key);
-  const t = toast('Aggiornamento in corso…', {loading:true, sticky:true});
+  const t = toast('L\'IA sta elaborando la richiesta…', {loading:true, sticky:true});
   try{
-    const system = "Sei un assistente di progettazione didattica per la scuola italiana. L'utente ti mostra un documento già generato e ti chiede una modifica o un'integrazione. Restituisci SOLO la versione aggiornata e completa del documento (mai un riassunto delle modifiche, mai premesse), in italiano, mantenendo la struttura a titoli e punti elenco.";
-    const user = "DOCUMENTO ATTUALE:\n"+current+"\n\nRICHIESTA DELL'UTENTE:\n"+text;
-    const out = await callBackend(system, user, 6000);
-    document.getElementById(previewId).innerText = out;
-    chatHistory[key].push({role:'ai', text:'Documento aggiornato secondo la richiesta.'});
-    toast('Documento aggiornato. Ricordati di premere "Salva" per confermarlo.', {ok:true});
+    const system = "Sei un tutor esperto di didattica e progettazione curricolare per la scuola italiana, che affianca il docente. L'utente ti mostra un documento già generato e ti scrive una richiesta: può chiederti di modificarlo, oppure porti una domanda o un parere sui contenuti (in questo caso commenta come farebbe un tutor: dai un riscontro pedagogico onesto, costruttivo, con eventuali suggerimenti di miglioramento). Rispondi SEMPRE e SOLO in questo formato, con questi due marcatori esatti e nient'altro fuori da essi:\n---COMMENTO---\n(qui il tuo commento/parere in 2-5 frasi: spiega cosa hai cambiato, oppure rispondi alla domanda/richiesta di parere del docente)\n---DOCUMENTO---\n(qui il documento COMPLETO, in italiano, con struttura a titoli e punti elenco: identico a quello attuale se la richiesta era solo una domanda senza modifiche, oppure aggiornato se la richiesta implicava una modifica)";
+    const user = "DOCUMENTO ATTUALE:\n"+current+"\n\nRICHIESTA/DOMANDA DELL'UTENTE:\n"+text;
+    const raw = await callBackend(system, user, 4500);
+    const parsed = parseTutorResponse(raw);
+    document.getElementById(previewId).innerText = parsed.documento;
+    chatHistory[key].push({role:'ai', text: parsed.commento || 'Documento aggiornato secondo la richiesta.'});
+    toast('Fatto. Ricordati di premere "Salva" per confermare eventuali modifiche.', {ok:true});
   }catch(e){
     chatHistory[key].push({role:'ai', text:'Errore: '+e.message});
   }finally{
     t.remove();
     renderChatMsgs(key);
   }
+}
+function parseTutorResponse(raw){
+  const commentoMatch = raw.match(/---COMMENTO---([\s\S]*?)---DOCUMENTO---/);
+  const docMatch = raw.match(/---DOCUMENTO---([\s\S]*)/);
+  if(commentoMatch && docMatch){
+    return { commento: commentoMatch[1].trim(), documento: docMatch[1].trim() };
+  }
+  return { commento: '', documento: raw.trim() };
 }
 
 /* =====================================================================
@@ -997,15 +1235,18 @@ async function generatePriorities(){
   if(!src){ toast('Allega o incolla prima il testo del PTOF.', {err:true}); return; }
   const btn = document.getElementById('btnGenPriorities'); btn.disabled=true;
   document.getElementById('prioritiesStatus').textContent = 'Analisi del PTOF in corso…';
+  const timer = startIndeterminateProgress('priorities', 'Analisi del PTOF in corso…');
   try{
     const system = "Sei un esperto di progettazione curricolare per la scuola italiana. Analizza il testo di un PTOF e restituisci in italiano, in forma sintetica a punti, le priorità strategiche dell'istituto (inclusione, rapporto con il territorio, ampliamento dell'offerta, contrasto alla dispersione, ecc.). Quando pertinente, segnala il collegamento con i pilastri delle Nuove Indicazioni 2025: "+SINTESI_2025+" Non inventare informazioni assenti nel testo. Restituisci solo l'elenco puntato, senza premesse.";
     const out = await callBackend(system, "Testo del PTOF:\n\n"+src.slice(0,8000), 2000);
     document.getElementById('prioritiesPreview').innerText = out;
     state.priorities = out; await saveState();
     document.getElementById('prioritiesStatus').textContent = 'Priorità generate.';
+    finishProgress('priorities', timer);
   }catch(e){
     toast(e.message, {err:true, duration:6000});
     document.getElementById('prioritiesStatus').textContent = '';
+    abortProgress('priorities', timer);
   }finally{ btn.disabled=false; }
 }
 
@@ -1035,34 +1276,48 @@ async function generateCurricolo(){
 
   let full = '';
   let i = 0;
+  showProgress('curricolo');
+  setProgress('curricolo', 3, 'Avvio generazione…');
   for(const task of tasks){
     i++;
     status.textContent = 'Generazione: '+task.label+' ('+i+'/'+tasks.length+')…';
+    setProgress('curricolo', Math.round((i-1)/tasks.length*100), 'Generazione: '+task.label+' ('+i+'/'+tasks.length+')');
     try{
       full += await generateCurricoloChunk(task, src) + '\n\n';
     }catch(e){
       full += '\n[Errore per '+task.label+': '+e.message+']\n\n';
       toast(e.message, {err:true, duration:6000});
     }
+    setProgress('curricolo', Math.round(i/tasks.length*100));
     preview.innerText = full;
   }
   state.curricolo = full.trim(); await saveState();
   status.textContent = 'Curricolo generato.';
+  setProgress('curricolo', 100, 'Completato ✓');
+  setTimeout(()=>hideProgress('curricolo'), 800);
   btn.disabled=false;
 }
 async function generateCurricoloChunk(task, ptofText){
   const priorities = state.priorities || '(nessuna priorità generata: usa direttamente il PTOF)';
+  const existingFull = state.existingDocs.curricolo;
+  const existingExcerpt = existingFull ? extractExistingExcerpt(existingFull, task.disciplina || "infanzia") : '';
+  const adattaNota = existingExcerpt ? "Il docente possiede già un curricolo d'istituto (estratto pertinente fornito sotto): ADATTALO e aggiornalo alle indicazioni normative applicabili invece di ripartire da zero, mantenendo quanto è già valido. " : "";
   if(task.ord==='infanzia'){
-    const system = "Sei un esperto di curricolo per la scuola dell'infanzia italiana. Applica le Nuove Indicazioni Nazionali 2025 (D.M. 221/2025): "+SINTESI_2025+" Genera un curricolo verticale d'istituto sintetico ma completo per i 5 campi di esperienza (Il sé e l'altro; Il corpo e il movimento; Immagini, suoni, colori; I discorsi e le parole; La conoscenza del mondo), calibrato sul PTOF e sulle priorità dell'istituto. Per ciascun campo indica: finalità, competenze attese, obiettivi specifici di apprendimento (OSA) per fascia d'età (3-4, 4-5, 5-6 anni). Formato a titoli e punti elenco, italiano, senza premesse.";
-    const user = "PRIORITÀ D'ISTITUTO:\n"+priorities+"\n\nCONTESTO PTOF:\n"+ptofText.slice(0,3000);
-    return "## SCUOLA DELL'INFANZIA\n" + await callBackend(system, user, 4000);
+    const system = "Sei un esperto di curricolo per la scuola dell'infanzia italiana. "+adattaNota+"Applica le Nuove Indicazioni Nazionali 2025 (D.M. 221/2025): "+SINTESI_2025+" Genera un curricolo verticale d'istituto sintetico ma completo per i 5 campi di esperienza (Il sé e l'altro; Il corpo e il movimento; Immagini, suoni, colori; I discorsi e le parole; La conoscenza del mondo), calibrato sul PTOF e sulle priorità dell'istituto. Per ciascun campo indica: finalità, competenze attese, obiettivi specifici di apprendimento (OSA) per fascia d'età (3-4, 4-5, 5-6 anni). Formato a titoli e punti elenco, italiano, senza premesse.";
+    const user = (existingExcerpt ? "CURRICOLO GIÀ IN POSSESSO (estratto):\n"+existingExcerpt+"\n\n" : "")+"PRIORITÀ D'ISTITUTO:\n"+priorities+"\n\nCONTESTO PTOF:\n"+ptofText.slice(0,3000);
+    return "## SCUOLA DELL'INFANZIA\n" + await callBackend(system, user, 3000);
   } else {
     const rif = SINTESI_2012[task.disciplina] || '';
     const finali = task.ord==='primaria' ? "fine classe 3ª e fine classe 5ª" : "fine classe 3ª";
-    const system = "Sei un esperto di curricolo verticale per la "+ORDINI[task.ord].label+" italiana, disciplina '"+task.disciplina+"'. Genera il curricolo d'istituto per questa disciplina applicando le Indicazioni 2012 (D.M. 254/2012) come struttura portante — traguardi di riferimento: "+rif+" — con obiettivi specifici di apprendimento e conoscenze differenziati per "+finali+". Integra inoltre, dove pertinente, i contenuti delle Nuove Indicazioni 2025 che si applicheranno alla classe prima: "+SINTESI_2025+" Calibra tutto sul PTOF e sulle priorità dell'istituto fornite. Indica: conoscenze essenziali/significative/rilevanti, obiettivi specifici di apprendimento, traguardi per lo sviluppo delle competenze. Punti elenco, italiano, senza premesse.";
-    const user = "PRIORITÀ D'ISTITUTO:\n"+priorities+"\n\nCONTESTO PTOF:\n"+ptofText.slice(0,2000);
+    const system = "Sei un esperto di curricolo verticale per la "+ORDINI[task.ord].label+" italiana, disciplina '"+task.disciplina+"'. "+adattaNota+"Genera il curricolo d'istituto per questa disciplina applicando le Indicazioni 2012 (D.M. 254/2012) come struttura portante — traguardi di riferimento: "+rif+" — con obiettivi specifici di apprendimento e conoscenze differenziati per "+finali+". Integra inoltre, dove pertinente, i contenuti delle Nuove Indicazioni 2025 che si applicheranno alla classe prima: "+SINTESI_2025+" Calibra tutto sul PTOF e sulle priorità dell'istituto fornite. Indica: conoscenze essenziali/significative/rilevanti, obiettivi specifici di apprendimento, traguardi per lo sviluppo delle competenze. Punti elenco, italiano, senza premesse.";
+    const user = (existingExcerpt ? "CURRICOLO GIÀ IN POSSESSO PER QUESTA DISCIPLINA (estratto):\n"+existingExcerpt+"\n\n" : "")+"PRIORITÀ D'ISTITUTO:\n"+priorities+"\n\nCONTESTO PTOF:\n"+ptofText.slice(0,2000);
     return "## "+ORDINI[task.ord].label.toUpperCase()+" — "+task.disciplina+"\n" + await callBackend(system, user, 3000);
   }
+}
+function extractExistingExcerpt(fullText, keyword){
+  const idx = fullText.indexOf(keyword);
+  if(idx===-1) return fullText.slice(0,1500); // parola chiave non trovata: fornisci comunque un estratto generale
+  return fullText.slice(Math.max(0,idx-100), idx+1500);
 }
 
 /* =====================================================================
@@ -1114,17 +1369,21 @@ async function generateProgrammazione(){
   const f = frameworkFor(ordine, classe);
   const btn = document.getElementById('btnGenProgrammazione'); btn.disabled=true;
   document.getElementById('programmazioneStatus').textContent = 'Generazione in corso…';
+  const timer = startIndeterminateProgress('programmazione', 'Generazione della programmazione in corso…');
   try{
     const rifNorma = f==='2025' ? SINTESI_2025 : (SINTESI_2012[disciplina]||'');
-    const system = "Sei un esperto di progettazione didattica per la "+ORDINI[ordine].label+" italiana. Genera la programmazione disciplinare di '"+disciplina+"' per la "+ORDINI[ordine].classi[classe]+", riferimento normativo: "+(f==='2025'?'D.M. 221/2025 — Nuove Indicazioni':'D.M. 254/2012')+" — "+rifNorma+". Basati sul curricolo d'istituto fornito, sul contesto classe (inclusi eventuali alunni BES: distingui metodologie per DSA/PDP, svantaggio linguistico e socio-culturale, ADHD e altro) e sulle priorità del PTOF. Includi: nuclei tematici/argomenti per periodo, attività didattiche, metodologie, strumenti, criteri di verifica in itinere. Formato a titoli e punti elenco, italiano, senza premesse.";
-    const user = "CURRICOLO D'ISTITUTO (estratto):\n"+extractRelevant(disciplina)+"\n\nCONTESTO CLASSE (con eventuali BES):\n"+(contesto||'(non specificato)')+"\n\nPRIORITÀ D'ISTITUTO:\n"+(state.priorities||'(nessuna)');
-    const out = await callBackend(system, user, 6000);
+    const existing = state.existingDocs.programmazione;
+    const system = "Sei un esperto di progettazione didattica per la "+ORDINI[ordine].label+" italiana. "+(existing ? "Il docente possiede già una programmazione disciplinare (fornita sotto): il tuo compito è ADATTARLA e aggiornarla alle indicazioni normative applicabili, mantenendo quanto è già valido e integrando ciò che manca — non ripartire da zero se non necessario. " : "Genera la programmazione disciplinare di '"+disciplina+"' per la "+ORDINI[ordine].classi[classe]+". ")+"Riferimento normativo: "+(f==='2025'?'D.M. 221/2025 — Nuove Indicazioni':'D.M. 254/2012')+" — "+rifNorma+". Basati sul curricolo d'istituto fornito, sul contesto classe (inclusi eventuali alunni BES: distingui metodologie per DSA/PDP, svantaggio linguistico e socio-culturale, ADHD e altro) e sulle priorità del PTOF. Includi: nuclei tematici/argomenti per periodo, attività didattiche, metodologie, strumenti, criteri di verifica in itinere. Formato a titoli e punti elenco, italiano, senza premesse.";
+    const user = (existing ? "PROGRAMMAZIONE GIÀ IN POSSESSO DEL DOCENTE (da adattare):\n"+existing.slice(0,3000)+"\n\n" : "")+"CURRICOLO D'ISTITUTO (estratto):\n"+extractRelevant(disciplina)+"\n\nCONTESTO CLASSE (con eventuali BES):\n"+(contesto||'(non specificato)')+"\n\nPRIORITÀ D'ISTITUTO:\n"+(state.priorities||'(nessuna)');
+    const out = await callBackend(system, user, 4500);
     document.getElementById('programmazionePreview').innerText = out;
     state.programmazione = out; await saveState();
     document.getElementById('programmazioneStatus').textContent = 'Programmazione generata.';
+    finishProgress('programmazione', timer);
   }catch(e){
     toast(e.message, {err:true, duration:6000});
     document.getElementById('programmazioneStatus').textContent = '';
+    abortProgress('programmazione', timer);
   }finally{ btn.disabled=false; }
 }
 function extractRelevant(disciplina){
@@ -1157,9 +1416,12 @@ async function generateValutazione(){
 
   let full = '';
   let i = 0;
+  showProgress('valutazione');
+  setProgress('valutazione', 3, 'Avvio generazione…');
   for(const tipo of selected){
     i++;
     status.textContent = 'Generazione griglia: '+VALUTAZIONE_LABELS[tipo]+' ('+i+'/'+selected.length+')…';
+    setProgress('valutazione', Math.round((i-1)/selected.length*100), 'Generazione griglia: '+VALUTAZIONE_LABELS[tipo]+' ('+i+'/'+selected.length+')');
     try{
       const system = "Sei un esperto di valutazione scolastica in Italia. Genera UNA griglia di valutazione di tipo '"+VALUTAZIONE_LABELS[tipo]+"' per la disciplina '"+(disciplina||'(non specificata)')+"', "+(ORDINI[ordine]?ORDINI[ordine].label:'')+" "+(ordine&&classe?ORDINI[ordine].classi[classe]:'')+", riferimento "+(f==='2025'?'D.M. 221/2025':'D.M. 254/2012')+". La griglia deve avere indicatori osservabili e descrittori per 4 livelli (Iniziale, Base, Intermedio, Avanzato), presentata come tabella testuale, collegata agli OSA della programmazione e alle Competenze Chiave (D.M. 14/2024). Tieni conto del contesto classe e dell'attività indicata. Italiano, senza premesse.";
       const user = "ATTIVITÀ/PERCORSO:\n"+(attivita||'(non specificata)')+"\n\nPROGRAMMAZIONE DI RIFERIMENTO (estratto):\n"+state.programmazione.slice(0,2200);
@@ -1168,10 +1430,13 @@ async function generateValutazione(){
       full += '\n[Errore per '+VALUTAZIONE_LABELS[tipo]+': '+e.message+']\n\n';
       toast(e.message, {err:true, duration:6000});
     }
+    setProgress('valutazione', Math.round(i/selected.length*100));
     preview.innerText = full;
   }
   state.valutazione = full.trim(); await saveState();
   status.textContent = 'Griglie generate.';
+  setProgress('valutazione', 100, 'Completato ✓');
+  setTimeout(()=>hideProgress('valutazione'), 800);
   btn.disabled=false;
 }
 
@@ -1186,18 +1451,22 @@ async function generateUda(){
   if(!discipline || !competenza || !richiesta){ toast('Compila i campi obbligatori: discipline coinvolte, competenza chiave e richiesta.', {err:true}); return; }
   const btn = document.getElementById('btnGenUda'); btn.disabled=true;
   document.getElementById('udaStatus').textContent = 'Generazione UDA in corso…';
+  const timer = startIndeterminateProgress('uda', 'Generazione della progettazione UDA in corso…');
   try{
     const {ordine, classe} = state.selection;
     const f = frameworkFor(ordine||'primaria', classe||'p2');
-    const system = "Sei un esperto di progettazione didattica per Unità di Apprendimento (UDA) nella scuola italiana. Genera una progettazione UDA completa rispondendo alle quattro domande guida (quali obiettivi, quali esperienze, come organizzarle, come accertare i risultati). Includi: Contesto classe, Conoscenze (rilevanti/significative/essenziali), Obiettivi e Competenze (OSA coerenti con la competenza chiave indicata), Metodologie e Strategie, Strumenti e Risorse, e — se sono presenti alunni BES — personalizzazione coerente con quanto dichiarato nel PEI/PDP. Riferimento normativo: "+(f==='2025'?'D.M. 221/2025 — '+SINTESI_2025:'D.M. 254/2012 — '+(SINTESI_2012[discipline.split(',')[0].trim()]||''))+". Formato a titoli e punti elenco, italiano, senza premesse.";
-    const user = "DISCIPLINE COINVOLTE: "+discipline+"\nCOMPETENZA CHIAVE PREDILETTA: "+competenza+"\nALUNNI BES (PEI/PDP): "+(bes||'nessuno segnalato')+"\n\nCURRICOLO/PROGRAMMAZIONE DI RIFERIMENTO (estratto):\n"+(state.programmazione||state.curricolo||'').slice(0,2000)+"\n\nRICHIESTA DEL DOCENTE:\n"+richiesta;
-    const out = await callBackend(system, user, 6000);
+    const existing = state.existingDocs.uda;
+    const system = "Sei un esperto di progettazione didattica per Unità di Apprendimento (UDA) nella scuola italiana. "+(existing ? "Il docente possiede già una progettazione (fornita sotto): il tuo compito è ADATTARLA alle indicazioni normative applicabili e alla richiesta, mantenendo quanto valido e integrando quanto manca. " : "Genera una progettazione UDA completa ")+"rispondendo alle quattro domande guida (quali obiettivi, quali esperienze, come organizzarle, come accertare i risultati). Includi: Contesto classe, Conoscenze (rilevanti/significative/essenziali), Obiettivi e Competenze (OSA coerenti con la competenza chiave indicata), Metodologie e Strategie, Strumenti e Risorse, e — se sono presenti alunni BES — personalizzazione coerente con quanto dichiarato nel PEI/PDP. Riferimento normativo: "+(f==='2025'?'D.M. 221/2025 — '+SINTESI_2025:'D.M. 254/2012 — '+(SINTESI_2012[discipline.split(',')[0].trim()]||''))+". Formato a titoli e punti elenco, italiano, senza premesse.";
+    const user = (existing ? "PROGETTAZIONE GIÀ IN POSSESSO DEL DOCENTE (da adattare):\n"+existing.slice(0,3000)+"\n\n" : "")+"DISCIPLINE COINVOLTE: "+discipline+"\nCOMPETENZA CHIAVE PREDILETTA: "+competenza+"\nALUNNI BES (PEI/PDP): "+(bes||'nessuno segnalato')+"\n\nCURRICOLO/PROGRAMMAZIONE DI RIFERIMENTO (estratto):\n"+(state.programmazione||state.curricolo||'').slice(0,2000)+"\n\nRICHIESTA DEL DOCENTE:\n"+richiesta;
+    const out = await callBackend(system, user, 4500);
     document.getElementById('udaPreview').innerText = out;
     state.uda = out; await saveState();
     document.getElementById('udaStatus').textContent = 'Progettazione UDA generata.';
+    finishProgress('uda', timer);
   }catch(e){
     toast(e.message, {err:true, duration:6000});
     document.getElementById('udaStatus').textContent = '';
+    abortProgress('uda', timer);
   }finally{ btn.disabled=false; }
 }
 
@@ -1227,6 +1496,15 @@ async function init(){
   document.getElementById('programmazionePreview').innerText = state.programmazione || '';
   document.getElementById('valutazionePreview').innerText = state.valutazione || '';
   document.getElementById('udaPreview').innerText = state.uda || '';
+
+  EXISTING_KEYS.forEach(key=>{
+    const text = state.existingDocs[key];
+    if(text){
+      document.getElementById('existingChip-'+key).innerHTML = `<div class="file-chip">📎 Documento acquisito <button onclick="clearExistingDoc('${key}')">×</button></div>`;
+      const manualTa = document.getElementById('existingManualText-'+key);
+      if(manualTa) manualTa.value = text;
+    }
+  });
 
   Object.keys(state.ordiniAttivi).forEach(ord=>{
     const card = document.querySelector('.toggle-card[data-ord="'+ord+'"]');
