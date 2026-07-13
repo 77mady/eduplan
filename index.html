@@ -250,6 +250,18 @@ textarea{min-height:90px;line-height:1.55;resize:vertical;}
 </div>
 <button class="gear-btn-fixed" onclick="openSettings()" title="Impostazioni">⚙</button>
 
+<!-- ============ RECOVERY MODAL (mostrato solo se esistono dati salvati) ============ -->
+<div class="modal-overlay" id="recoveryModal">
+  <div class="modal">
+    <h3>Riprendere il lavoro precedente?</h3>
+    <p>Abbiamo trovato dati salvati in questo browser da una visita precedente (PTOF, curricolo, programmazione…). Vuoi riprendere da dove avevi lasciato, oppure iniziare una sessione completamente nuova?</p>
+    <div class="row-actions" style="margin-top:6px;">
+      <button class="btn primary sm" onclick="resumeSession()">↩ Riprendi da dove avevo lasciato</button>
+      <button class="btn ghost sm" onclick="startFreshSession()" style="color:var(--danger);border-color:#E3B8B3;">🗑 Inizia da capo</button>
+    </div>
+  </div>
+</div>
+
 <!-- ============ SETTINGS MODAL ============ -->
 <div class="modal-overlay" id="settingsModal">
   <div class="modal">
@@ -711,8 +723,8 @@ textarea{min-height:90px;line-height:1.55;resize:vertical;}
         <button class="btn ghost sm" onclick="toggleEdit('udaPreview','btnEditUda')" id="btnEditUda">✎ Modifica progettazione</button>
         <button class="btn accent sm" onclick="saveSection('uda','udaPreview')">💾 Salva</button>
         <button class="btn ghost sm" onclick="copyToClipboard('udaPreview')">📋 Copia negli Appunti</button>
-        <button class="btn primary sm" onclick="downloadDoc('Progettazione_UDA','udaPreview')">⬇ Salva e scarica UDA</button>
-        <button class="btn ghost sm" onclick="downloadDocAsTable('Progettazione_UDA','udaPreview')">📊 Scarica come tabella</button>
+        <button class="btn primary sm" onclick="downloadUdaCombined('Progettazione_UDA')">⬇ Salva e scarica UDA</button>
+        <button class="btn ghost sm" onclick="downloadUdaCombinedAsTable('Progettazione_UDA')">📊 Scarica come tabella</button>
         <button class="btn ghost sm" onclick="toggleChat('uda')">💬 Chiedi modifiche all'IA</button>
       </div>
       <div class="ai-chat" id="chat-uda">
@@ -726,7 +738,7 @@ textarea{min-height:90px;line-height:1.55;resize:vertical;}
 
     <div class="card">
       <h3 style="font-size:17px;color:var(--brand-deep);margin-bottom:8px;">🎯 Griglia di valutazione specifica per questa UDA</h3>
-      <p class="sec-sub" style="margin-bottom:18px;">Una griglia pensata appositamente per gli obiettivi e le attività di questa UDA — non generica, ma coerente con la programmazione, il curricolo d'istituto e il riferimento normativo applicabile.</p>
+      <p class="sec-sub" style="margin-bottom:18px;">Una griglia pensata appositamente per gli obiettivi e le attività di questa UDA — non generica, ma coerente con la programmazione, il curricolo d'istituto e il riferimento normativo applicabile. Una volta generata, viene inclusa automaticamente nel download della Progettazione UDA qui sopra (sia nel formato semplice che in tabella).</p>
       <div class="row-actions">
         <button class="btn accent" id="btnGenUdaGriglia" onclick="generateUdaGriglia()">✦ Genera griglia di valutazione per l'UDA</button>
       </div>
@@ -818,14 +830,27 @@ let state = {
   udaCompetenze:[],
   completed:{priorities:false, curricolo:false, programmazione:false, valutazione:false, uda:false}
 };
-async function loadState(){
-  const raw = await stGet('eduplan-state');
-  if(raw){ try{
+async function loadRawState(){
+  return await stGet('eduplan-state');
+}
+function mergeState(raw){
+  try{
     state = Object.assign(state, JSON.parse(raw));
     if(!state.completed) state.completed={priorities:false,curricolo:false,programmazione:false,valutazione:false,uda:false};
     if(!state.existingDocs) state.existingDocs={curricolo:'',programmazione:'',uda:''};
     if(!state.provider) state.provider='gemini';
-  }catch(e){} }
+    if(!state.udaCompetenze) state.udaCompetenze=[];
+  }catch(e){}
+}
+function rawStateHasContent(raw){
+  if(!raw) return false;
+  try{
+    const parsed = JSON.parse(raw);
+    return !!(
+      (parsed.ptof && (parsed.ptof.fileName || parsed.ptof.text || parsed.ptof.manualText)) ||
+      parsed.priorities || parsed.curricolo || parsed.programmazione || parsed.valutazione || parsed.uda || parsed.udaGriglia
+    );
+  }catch(e){ return false; }
 }
 async function saveState(){ await stSet('eduplan-state', JSON.stringify(state)); }
 
@@ -1157,22 +1182,37 @@ async function saveSection(key, previewId){
     toast('Salvato.', {ok:true});
   }
 }
+// --- Helpers condivisi per generare ed esportare documenti Word ---
+function wrapWordDocument(bodyHtml, landscape){
+  const pageSetup = landscape
+    ? "<style>@page Section1 {size:842.0pt 595.3pt; mso-page-orientation:landscape;} div.Section1 {page:Section1;}</style>"
+    : "";
+  const sectionOpen = landscape ? '<div class="Section1">' : '<div>';
+  const sectionClose = '</div>';
+  return "<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'><head><meta charset='utf-8'><title>documento</title>"+pageSetup+"</head><body>"+sectionOpen+bodyHtml+sectionClose+"</body></html>";
+}
+function triggerWordDownload(filename, htmlDoc){
+  const blob = new Blob(['\ufeff', htmlDoc], {type:'application/msword'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href=url; a.download=filename; a.click();
+  URL.revokeObjectURL(url);
+}
+function containsMarkdownTable(text){
+  return /\n\s*\|.*\|\s*\n\s*\|[\s:-]+\|/.test('\n'+(text||''));
+}
+
 function downloadDoc(filename, previewId){
   const text = document.getElementById(previewId).innerText;
   if(!text || !text.trim()){ toast('Genera prima il contenuto.', {err:true}); return; }
-  const pre = "<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'><head><meta charset='utf-8'><title>"+filename+"</title></head><body><div style=\"font-family:Georgia,serif;font-size:13px;line-height:1.6;white-space:pre-wrap;\">"+escapeHtml(text)+"</div></body></html>";
-  const blob = new Blob(['\ufeff', pre], {type:'application/msword'});
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a'); a.href=url; a.download=filename+'.doc'; a.click();
-  URL.revokeObjectURL(url);
+  const bodyHtml = "<div style=\"font-family:Georgia,serif;font-size:13px;line-height:1.6;white-space:pre-wrap;\">"+escapeHtml(text)+"</div>";
+  triggerWordDownload(filename+'.doc', wrapWordDocument(bodyHtml, false));
 }
-// Converte il testo generato (titoli "## " + punti elenco) in una tabella a due colonne: Titolo | Contenuto
+
+// Converte il testo generato in una tabella Word: se contiene una o più tabelle in sintassi
+// Markdown (righe con "|", tipico delle griglie di valutazione), le trasforma in vere tabelle HTML
+// con intestazione evidenziata e colonne ben distribuite; altrimenti usa il formato "Titolo | Contenuto".
 function textToTableHtml(text){
-  // Se il testo contiene una o più tabelle in sintassi Markdown (righe con "|"), le converte in vere
-  // tabelle HTML (con intestazione evidenziata), mantenendo titoli/note come testo normale.
-  // Se non è presente nessuna tabella, ricade sul formato "Titolo | Contenuto" usato per gli altri documenti.
-  const hasMarkdownTable = /\n\s*\|.*\|\s*\n\s*\|[\s:-]+\|/.test('\n'+text);
-  if(hasMarkdownTable) return markdownAwareToHtml(text);
+  if(containsMarkdownTable(text)) return markdownAwareToHtml(text);
   return titleContentTableHtml(text);
 }
 
@@ -1192,11 +1232,16 @@ function markdownAwareToHtml(text){
         bodyRows.push(splitCells(lines[i]));
         i++;
       }
-      html += '<table style="width:100%;border-collapse:collapse;margin:10px 0 16px;">';
-      html += '<tr>'+headerCells.map(h=>'<th style="border:1px solid #999;padding:8px;background:#204F42;color:#fff;font-family:Calibri,Arial,sans-serif;font-size:12px;text-align:left;">'+escapeHtml(h)+'</th>').join('')+'</tr>';
+      // Prima colonna (indicatore) più stretta, le colonne dei livelli si dividono il resto in modo uniforme
+      const n = headerCells.length;
+      const firstColWidth = n>1 ? 22 : 100;
+      const otherColWidth = n>1 ? Math.floor((100-firstColWidth)/(n-1)) : 0;
+      html += '<table style="width:100%;table-layout:fixed;border-collapse:collapse;margin:10px 0 18px;">';
+      html += '<colgroup>'+headerCells.map((h,idx)=>'<col style="width:'+(idx===0?firstColWidth:otherColWidth)+'%;">').join('')+'</colgroup>';
+      html += '<tr>'+headerCells.map(h=>'<th style="border:1.5px solid #666;padding:9px 10px;background:#204F42;color:#fff;font-family:Calibri,Arial,sans-serif;font-size:12.5px;font-weight:700;text-align:left;">'+escapeHtml(h)+'</th>').join('')+'</tr>';
       bodyRows.forEach((row,ri)=>{
-        html += '<tr style="background:'+(ri%2===0?'#FFFFFF':'#F7F4EC')+';">'+row.map((c,idx)=>
-          '<td style="border:1px solid #999;padding:8px;vertical-align:top;font-family:Calibri,Arial,sans-serif;font-size:12px;'+(idx===0?'font-weight:bold;background:#EFEAE0;':'')+'">'+escapeHtml(c)+'</td>'
+        html += '<tr style="background:'+(ri%2===0?'#FFFFFF':'#F4F1E8')+';">'+row.map((c,idx)=>
+          '<td style="border:1px solid #999;padding:8px 10px;vertical-align:top;font-family:Calibri,Arial,sans-serif;font-size:12px;line-height:1.4;'+(idx===0?'font-weight:700;background:#EFEAE0;':'')+'">'+escapeHtml(c)+'</td>'
         ).join('')+'</tr>';
       });
       html += '</table>';
@@ -1244,15 +1289,33 @@ function titleContentTableHtml(text){
   });
   return '<table style="width:100%;border-collapse:collapse;">'+rows+'</table>';
 }
+
 function downloadDocAsTable(filename, previewId){
   const text = document.getElementById(previewId).innerText;
   if(!text || !text.trim()){ toast('Genera prima il contenuto.', {err:true}); return; }
   const tableHtml = textToTableHtml(text);
-  const pre = "<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'><head><meta charset='utf-8'><title>"+filename+"</title></head><body>"+tableHtml+"</body></html>";
-  const blob = new Blob(['\ufeff', pre], {type:'application/msword'});
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a'); a.href=url; a.download=filename+'_tabella.doc'; a.click();
-  URL.revokeObjectURL(url);
+  triggerWordDownload(filename+'_tabella.doc', wrapWordDocument(tableHtml, containsMarkdownTable(text)));
+}
+
+// Progettazione UDA: unisce automaticamente il testo dell'UDA e, se presente, la sua griglia di
+// valutazione specifica, sia nel download semplice sia in quello a tabella.
+function getUdaFullText(){
+  const udaText = (document.getElementById('udaPreview').innerText || '').trim();
+  const grigliaText = (document.getElementById('udaGrigliaPreview').innerText || '').trim();
+  if(!udaText) return '';
+  return grigliaText ? udaText+"\n\n## GRIGLIA DI VALUTAZIONE DELL'UDA\n\n"+grigliaText : udaText;
+}
+function downloadUdaCombined(filename){
+  const text = getUdaFullText();
+  if(!text){ toast('Genera prima la progettazione UDA.', {err:true}); return; }
+  const bodyHtml = "<div style=\"font-family:Georgia,serif;font-size:13px;line-height:1.6;white-space:pre-wrap;\">"+escapeHtml(text)+"</div>";
+  triggerWordDownload(filename+'.doc', wrapWordDocument(bodyHtml, false));
+}
+function downloadUdaCombinedAsTable(filename){
+  const text = getUdaFullText();
+  if(!text){ toast('Genera prima la progettazione UDA.', {err:true}); return; }
+  const tableHtml = textToTableHtml(text);
+  triggerWordDownload(filename+'_tabella.doc', wrapWordDocument(tableHtml, containsMarkdownTable(text)));
 }
 
 /* =====================================================================
@@ -1584,8 +1647,27 @@ async function generateUdaGriglia(){
    INIT
    ===================================================================== */
 async function init(){
-  await loadState();
   await setupPdfWorker();
+  const raw = await loadRawState();
+  if(rawStateHasContent(raw)){
+    window.__pendingRaw = raw;
+    document.getElementById('recoveryModal').classList.add('show');
+  } else {
+    await populateUI();
+  }
+}
+async function resumeSession(){
+  document.getElementById('recoveryModal').classList.remove('show');
+  if(window.__pendingRaw) mergeState(window.__pendingRaw);
+  await populateUI();
+}
+async function startFreshSession(){
+  document.getElementById('recoveryModal').classList.remove('show');
+  try{ if(HAS_WS){ await window.storage.delete('eduplan-state', false); } }catch(e){}
+  try{ window.localStorage.removeItem('eduplan-state'); }catch(e){}
+  await populateUI();
+}
+async function populateUI(){
 
   if(window.location.protocol === 'file:'){
     document.getElementById('fileWarningBanner').style.display = 'block';
