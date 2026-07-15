@@ -244,7 +244,6 @@ textarea{min-height:90px;line-height:1.55;resize:vertical;}
 <body>
 
 <div id="printArea" class="print-only"></div>
-  <div id="printArea" class="print-only"></div>
 <div style="position:fixed;bottom:14px;left:14px;z-index:105;display:flex;align-items:center;gap:7px;background:rgba(255,255,255,.94);border:1px solid var(--line);border-radius:10px;padding:6px 10px;box-shadow:var(--shadow);">
   <img src="logo.png" alt="EduPlan" style="height:24px;width:auto;display:block;">
   <span style="font-size:10px;color:var(--ink-soft);font-weight:600;line-height:1.2;">Prof.ssa<br>Maddalena Focetola</span>
@@ -294,7 +293,7 @@ textarea{min-height:90px;line-height:1.55;resize:vertical;}
 <!-- ============ STICKY NAV ============ -->
 <div class="nav" id="stickyNav">
   <div class="nav-inner">
-    <div class="nav-brand">EDUPLAN</div>
+    <div class="nav-brand"><img src="logo.png" alt="EduPlan" style="height:34px;width:auto;display:block;"></div>
     <div class="nav-links" id="navLinks">
       <a href="#sec2" data-target="sec2">PTOF</a>
       <a href="#sec3" data-target="sec3" onclick="return navGuard('sec3', event)">Curricolo</a>
@@ -687,10 +686,22 @@ textarea{min-height:90px;line-height:1.55;resize:vertical;}
     </div>
 
     <div class="card">
+      <div class="required-grid">
+        <div class="field">
+          <label>Titolo dell'UDA (opzionale)</label>
+          <input type="text" id="udaTitolo" placeholder="Es. «Un fiume di storie» — lascia vuoto per farlo proporre dall'IA">
+        </div>
+        <div class="field">
+          <label>Periodo e durata (opzionale)</label>
+          <input type="text" id="udaPeriodo" placeholder="Es. Marzo 2026, 6 settimane, 2 ore a settimana">
+        </div>
+      </div>
+
       <div class="field" style="margin-bottom:16px;">
         <label>Discipline coinvolte <span class="req">*</span></label>
         <input type="text" id="udaDiscipline" placeholder="Es. Italiano, Storia, Arte e Immagine">
       </div>
+
       <div class="field" style="margin-bottom:16px;">
         <label>Competenze chiave europee — una o più, anche tutte e 8 <span class="req">*</span></label>
         <div class="chip-panel show" id="udaCompetenzePanel">
@@ -704,13 +715,44 @@ textarea{min-height:90px;line-height:1.55;resize:vertical;}
           <button type="button" class="chip" data-c="Competenza in materia di consapevolezza ed espressione culturali" onclick="toggleUdaCompetenza(this)">Competenza in materia di consapevolezza ed espressione culturali</button>
         </div>
       </div>
+
+      <div class="note-box" style="margin-bottom:18px;">
+        <strong>🎯 Il cuore dell'UDA.</strong> Il compito autentico e il prodotto finale sono ciò che dà senso a tutto il percorso: più sono concreti, più la progettazione che l'IA costruirà intorno ad essi sarà efficace.
+      </div>
+
       <div class="field" style="margin-bottom:16px;">
-        <label>Alunni BES: quanto dichiarato nel PEI o nel PDP (se presenti)</label>
-        <textarea id="udaBes" placeholder="Es. Alunno con PDP per DSA: strumenti compensativi (mappe, sintesi vocale), misure dispensative su lettura ad alta voce…" style="min-height:70px;"></textarea>
+        <label>Compito autentico / Situazione-problema <span class="req">*</span></label>
+        <textarea id="udaCompito" placeholder="Descrivi la sfida o situazione realistica che gli studenti devono affrontare mobilitando le proprie competenze, come se si trovassero nel mondo reale. Es. «La biblioteca comunale ci ha chiesto di realizzare un percorso guidato per bambini sulla storia del nostro paese…»"></textarea>
       </div>
       <div class="field" style="margin-bottom:16px;">
-        <label>Cosa vuoi chiedere all'IA <span class="req">*</span></label>
-        <textarea id="udaRichiesta" placeholder="Descrivi il percorso che vuoi progettare, seguendo le quattro domande guida: quali obiettivi, quali esperienze, come organizzarle, come accertare i risultati…"></textarea>
+        <label>Prodotto finale <span class="req">*</span></label>
+        <input type="text" id="udaProdotto" placeholder="Es. un cortometraggio, un sito web, un plastico, un evento pubblico, un giornale di classe, un debate">
+      </div>
+
+      <div class="field" style="margin-bottom:16px;">
+        <label>Prerequisiti (opzionale)</label>
+        <textarea id="udaPrerequisiti" placeholder="Cosa devono già sapere o saper fare gli studenti prima di iniziare…" style="min-height:70px;"></textarea>
+      </div>
+
+      <div class="field" style="margin-bottom:16px;">
+        <label>Alunni BES: quanto dichiarato nel PEI, nel PDP o per alunni NAI (se presenti)</label>
+        <textarea id="udaBes" placeholder="Es. Alunno con PDP per DSA: strumenti compensativi (mappe, sintesi vocale), misure dispensative; alunno NAI in fase di alfabetizzazione dell'italiano L2…" style="min-height:70px;"></textarea>
+      </div>
+
+      <div class="field" style="margin-bottom:16px;">
+        <label>Collegamenti trasversali — se pertinenti</label>
+        <div class="chip-panel show" id="udaTrasversaliPanel">
+          <button type="button" class="chip" data-t="Educazione Civica" onclick="toggleUdaTrasversale(this)">Educazione Civica</button>
+          <button type="button" class="chip" data-t="Agenda 2030 (Obiettivi di Sviluppo Sostenibile ONU)" onclick="toggleUdaTrasversale(this)">Agenda 2030</button>
+          <button type="button" class="chip" data-t="LifeComp — competenze personali, sociali e di imparare a imparare" onclick="toggleUdaTrasversale(this)">LifeComp</button>
+          <button type="button" class="chip" data-t="GreenComp — competenza in materia di sostenibilità" onclick="toggleUdaTrasversale(this)">GreenComp</button>
+          <button type="button" class="chip" data-t="DigComp — quadro europeo delle competenze digitali" onclick="toggleUdaTrasversale(this)">DigComp</button>
+        </div>
+      </div>
+
+      <div class="field" style="margin-bottom:16px;">
+        <label>Ulteriori indicazioni per l'IA (opzionale)</label>
+        <textarea id="udaRichiesta" placeholder="Eventuali richieste aggiuntive, vincoli particolari, preferenze metodologiche…"></textarea>
       </div>
 
       <div class="row-actions">
@@ -836,6 +878,7 @@ let state = {
   ordiniAttivi:{infanzia:true, primaria:true, secondaria:true},
   valutazioneTipi:{diagnostica:true, iniziale:true, formativa:true, autovalutativa:true, metacognitiva:true, finale:true},
   udaCompetenze:[],
+  udaTrasversali:[],
   completed:{priorities:false, curricolo:false, programmazione:false, valutazione:false, uda:false}
 };
 async function loadRawState(){
@@ -848,6 +891,7 @@ function mergeState(raw){
     if(!state.existingDocs) state.existingDocs={curricolo:'',programmazione:'',uda:''};
     if(!state.provider) state.provider='gemini';
     if(!state.udaCompetenze) state.udaCompetenze=[];
+    if(!state.udaTrasversali) state.udaTrasversali=[];
   }catch(e){}
 }
 function rawStateHasContent(raw){
@@ -1518,6 +1562,17 @@ function toggleUdaCompetenza(el){
   }
   saveState();
 }
+function toggleUdaTrasversale(el){
+  const t = el.dataset.t;
+  el.classList.toggle('on');
+  if(!state.udaTrasversali) state.udaTrasversali = [];
+  if(el.classList.contains('on')){
+    if(!state.udaTrasversali.includes(t)) state.udaTrasversali.push(t);
+  }else{
+    state.udaTrasversali = state.udaTrasversali.filter(x=>x!==t);
+  }
+  saveState();
+}
 async function generateProgrammazione(){
   if(!state.curricolo){ toast('Genera prima il curricolo d\'Istituto (sezione precedente).', {err:true}); document.getElementById('sec3').scrollIntoView({behavior:'smooth'}); return; }
   const {ordine, classe, disciplina} = state.selection;
@@ -1602,11 +1657,21 @@ async function generateValutazione(){
    SEZIONE 6 — PROGETTAZIONE UDA
    ===================================================================== */
 async function generateUda(){
+  const titolo = document.getElementById('udaTitolo').value.trim();
+  const periodo = document.getElementById('udaPeriodo').value.trim();
   const discipline = document.getElementById('udaDiscipline').value.trim();
   const competenze = state.udaCompetenze || [];
+  const compito = document.getElementById('udaCompito').value.trim();
+  const prodotto = document.getElementById('udaProdotto').value.trim();
+  const prerequisiti = document.getElementById('udaPrerequisiti').value.trim();
   const bes = document.getElementById('udaBes').value.trim();
+  const trasversali = state.udaTrasversali || [];
   const richiesta = document.getElementById('udaRichiesta').value.trim();
-  if(!discipline || !competenze.length || !richiesta){ toast('Compila i campi obbligatori: discipline coinvolte, almeno una competenza chiave e richiesta.', {err:true}); return; }
+
+  if(!discipline || !competenze.length || !compito || !prodotto){
+    toast('Compila i campi obbligatori: discipline coinvolte, almeno una competenza chiave, compito autentico e prodotto finale.', {err:true});
+    return;
+  }
   const competenza = competenze.join(', ');
   const btn = document.getElementById('btnGenUda'); btn.disabled=true;
   document.getElementById('udaStatus').textContent = 'Generazione UDA in corso…';
@@ -1615,9 +1680,31 @@ async function generateUda(){
     const {ordine, classe} = state.selection;
     const f = frameworkFor(ordine||'primaria', classe||'p2');
     const existing = state.existingDocs.uda;
-    const system = "Sei un esperto di progettazione didattica per Unità di Apprendimento (UDA) nella scuola italiana. "+(existing ? "Il docente possiede già una progettazione (fornita sotto): il tuo compito è ADATTARLA alle indicazioni normative applicabili e alla richiesta, mantenendo quanto valido e integrando quanto manca. " : "Genera una progettazione UDA completa ")+"rispondendo alle quattro domande guida (quali obiettivi, quali esperienze, come organizzarle, come accertare i risultati). Includi: Contesto classe, Conoscenze (rilevanti/significative/essenziali), Obiettivi e Competenze (OSA coerenti con la/le competenza/e chiave indicata/e), Metodologie e Strategie, Strumenti e Risorse, e — se sono presenti alunni BES — personalizzazione coerente con quanto dichiarato nel PEI/PDP. Riferimento normativo: "+(f==='2025'?'D.M. 221/2025 — '+SINTESI_2025:'D.M. 254/2012 — '+(SINTESI_2012[discipline.split(',')[0].trim()]||''))+". Formato a titoli e punti elenco, italiano, senza premesse.";
-    const user = (existing ? "PROGETTAZIONE GIÀ IN POSSESSO DEL DOCENTE (da adattare):\n"+existing.slice(0,3000)+"\n\n" : "")+"DISCIPLINE COINVOLTE: "+discipline+"\nCOMPETENZE CHIAVE PREDILETTE: "+competenza+"\nALUNNI BES (PEI/PDP): "+(bes||'nessuno segnalato')+"\n\nCURRICOLO/PROGRAMMAZIONE DI RIFERIMENTO (estratto):\n"+(state.programmazione||state.curricolo||'').slice(0,2000)+"\n\nRICHIESTA DEL DOCENTE:\n"+richiesta;
-    const out = await callBackend(system, user, 4500);
+    const destinatari = (ordine && classe && ORDINI[ordine]) ? (ORDINI[ordine].label+', '+ORDINI[ordine].classi[classe]) : '(non specificati — deducili dal contesto disponibile)';
+
+    const system = "Sei un esperto di progettazione didattica per Unità di Apprendimento (UDA) nella scuola italiana. "+
+      (existing ? "Il docente possiede già una progettazione (fornita sotto): il tuo compito è ADATTARLA alle indicazioni normative applicabili e ai dati forniti, mantenendo quanto valido e integrando quanto manca. " : "Genera una progettazione UDA COMPLETA e professionale, pronta per essere personalizzata dal docente. ")+
+      "Il compito autentico e il prodotto finale forniti dal docente sono il cuore della progettazione: costruisci tutto il resto in coerenza con essi, in modo che risultino credibili e realizzabili.\n\n"+
+      "La progettazione DEVE contenere, in questo ordine, tutte le seguenti sezioni con questi titoli esatti (##):\n"+
+      "1. Titolo dell'UDA\n2. Destinatari\n3. Discipline coinvolte\n4. Periodo e durata\n5. Competenze attese\n6. Traguardi per lo sviluppo delle competenze\n7. Obiettivi di apprendimento\n8. Prerequisiti\n9. Compito autentico / Situazione-problema\n10. Prodotto finale\n11. Articolazione delle attività (fasi del percorso)\n12. Metodologie didattiche\n13. Strumenti e risorse\n14. Strategie di inclusione e personalizzazione (PEI, DSA, BES, NAI)\n15. Verifica degli apprendimenti\n16. Valutazione (criteri e rubriche)\n17. Autovalutazione degli studenti\n18. Documentazione e diffusione del percorso\n\n"+
+      "Per le sezioni 1, 3, 4, 9, 10 usa/elabora quanto fornito dal docente senza stravolgerlo. Per la sezione 6 (Traguardi) e 5 (Competenze attese) fai riferimento esplicito alle competenze chiave indicate e, se pertinenti, ai collegamenti trasversali forniti (Educazione Civica, Agenda 2030, LifeComp, GreenComp, DigComp), citandoli nelle sezioni dove rilevanti (in particolare 5, 6, 11). Riferimento normativo per obiettivi/traguardi: "+(f==='2025'?'D.M. 221/2025 — '+SINTESI_2025:'D.M. 254/2012 — '+(SINTESI_2012[discipline.split(',')[0].trim()]||''))+". Competenze chiave secondo D.M. 14/2024. Formato a titoli ## e punti elenco, italiano, senza premesse né conclusioni fuori dalle sezioni indicate.";
+
+    const user = (existing ? "PROGETTAZIONE GIÀ IN POSSESSO DEL DOCENTE (da adattare):\n"+existing.slice(0,3000)+"\n\n" : "")+
+      "TITOLO PROPOSTO DAL DOCENTE: "+(titolo||'(nessuno, proponilo tu)')+
+      "\nDESTINATARI: "+destinatari+
+      "\nDISCIPLINE COINVOLTE: "+discipline+
+      "\nPERIODO E DURATA: "+(periodo||'(non specificato, proponi una durata plausibile)')+
+      "\nCOMPETENZE CHIAVE SCELTE: "+competenza+
+      "\nCOMPITO AUTENTICO / SITUAZIONE-PROBLEMA: "+compito+
+      "\nPRODOTTO FINALE: "+prodotto+
+      "\nPREREQUISITI INDICATI DAL DOCENTE: "+(prerequisiti||'(nessuno indicato, deducili tu dal contesto)')+
+      "\nALUNNI BES/DSA/NAI (PEI/PDP): "+(bes||'nessuno segnalato')+
+      "\nCOLLEGAMENTI TRASVERSALI RICHIESTI: "+(trasversali.length?trasversali.join('; '):'nessuno specifico indicato dal docente')+
+      "\n\nCURRICOLO/PROGRAMMAZIONE DI RIFERIMENTO (estratto):\n"+(state.programmazione||state.curricolo||'').slice(0,2000)+
+      "\n\nPRIORITÀ D'ISTITUTO:\n"+(state.priorities||'(nessuna)')+
+      (richiesta ? "\n\nULTERIORI INDICAZIONI DEL DOCENTE:\n"+richiesta : "");
+
+    const out = await callBackend(system, user, 6000);
     document.getElementById('udaPreview').innerText = out;
     state.uda = out; await saveState();
     document.getElementById('udaStatus').textContent = 'Progettazione UDA generata.';
@@ -1709,6 +1796,10 @@ async function populateUI(){
 
   (state.udaCompetenze||[]).forEach(c=>{
     const chip = document.querySelector('#udaCompetenzePanel .chip[data-c="'+c.replace(/"/g,'\\"')+'"]');
+    if(chip) chip.classList.add('on');
+  });
+  (state.udaTrasversali||[]).forEach(t=>{
+    const chip = document.querySelector('#udaTrasversaliPanel .chip[data-t="'+t.replace(/"/g,'\\"')+'"]');
     if(chip) chip.classList.add('on');
   });
 
