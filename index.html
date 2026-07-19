@@ -75,6 +75,15 @@ textarea,input,select{font-family:inherit;font-size:14px;}
   font-size:17px;display:flex;align-items:center;justify-content:center;box-shadow:var(--shadow);
 }
 .gear-btn-fixed:hover{background:var(--brand-soft);}
+.logo-soft{
+  -webkit-mask-image: radial-gradient(ellipse 62% 62% at center, black 50%, transparent 96%);
+  mask-image: radial-gradient(ellipse 62% 62% at center, black 50%, transparent 96%);
+  filter: drop-shadow(0 2px 5px rgba(31,42,40,.15));
+}
+.format-select{
+  border:1px solid var(--line);border-radius:9px;padding:9px 11px;font-size:12.5px;
+  background:#fff;color:var(--ink);font-weight:600;cursor:pointer;
+}
 
 /* ---------- Hero ---------- */
 .hero{min-height:92vh;display:flex;flex-direction:column;justify-content:center;position:relative;overflow:hidden;}
@@ -244,10 +253,8 @@ textarea{min-height:90px;line-height:1.55;resize:vertical;}
 <body>
 
 <div id="printArea" class="print-only"></div>
-<div style="position:fixed;bottom:14px;left:14px;z-index:105;display:flex;align-items:center;gap:7px;background:rgba(255,255,255,.94);border:1px solid var(--line);border-radius:10px;padding:6px 10px;box-shadow:var(--shadow);">
-  <img src="logo.png" alt="EduPlan" style="height:24px;width:auto;display:block;">
-  <span style="font-size:10px;color:var(--ink-soft);font-weight:600;line-height:1.2;">Prof.ssa<br>Maddalena Focetola</span>
-</div>
+<img src="logo.png" alt="EduPlan — a cura della Prof.ssa Maddalena Focetola" class="logo-soft" style="position:fixed;top:12px;right:64px;z-index:105;height:46px;width:auto;">
+
 <div class="toast-host" id="toastHost"></div>
 <div id="fileWarningBanner" style="display:none;background:#B23B32;color:#fff;text-align:center;padding:12px 18px;font-size:13.5px;font-weight:600;position:sticky;top:0;z-index:100;">
   ⚠️ Questa versione richiede che l'app sia pubblicata online (serve un server che protegga la chiave): apri l'app dall'indirizzo pubblicato (es. su Vercel), non dal file sul computer. Vedi la guida allegata.
@@ -293,7 +300,7 @@ textarea{min-height:90px;line-height:1.55;resize:vertical;}
 <!-- ============ STICKY NAV ============ -->
 <div class="nav" id="stickyNav">
   <div class="nav-inner">
-    <div class="nav-brand"><img src="logo.png" alt="EduPlan" style="height:34px;width:auto;display:block;"></div>
+    <div class="nav-brand">EDUPLAN</div>
     <div class="nav-links" id="navLinks">
       <a href="#sec2" data-target="sec2">PTOF</a>
       <a href="#sec3" data-target="sec3" onclick="return navGuard('sec3', event)">Curricolo</a>
@@ -308,7 +315,7 @@ textarea{min-height:90px;line-height:1.55;resize:vertical;}
 <section class="hero">
   <div class="wrap">
     <div class="eyebrow">Piattaforma IA per la scuola italiana</div>
-    <img src="logo.png" alt="EduPlan — a cura della Prof.ssa Maddalena Focetola" style="max-width:380px;width:80%;height:auto;margin-bottom:6px;">
+    <h1>EDU<span>PLAN</span></h1>
     <p class="hero-sub">La Web App intelligente per i docenti italiani: genera curricoli d'istituto, programmazioni disciplinari e griglie di valutazione in piena conformità con le <strong>Nuove Indicazioni Nazionali 2025 (D.M. 221/2025)</strong> e le <strong>Indicazioni 2012 (D.M. 254/2012)</strong>, integrata con il PTOF della tua scuola e potenziata dall'intelligenza artificiale.</p>
     <div class="badges-row"></div>
     <button class="btn primary" onclick="startPlanning()">Inizia a progettare →</button>
@@ -361,7 +368,6 @@ textarea{min-height:90px;line-height:1.55;resize:vertical;}
       <div class="row-actions">
         <button class="btn ghost sm" onclick="toggleEdit('prioritiesPreview','btnEditPriorities')" id="btnEditPriorities">✎ Modifica</button>
         <button class="btn accent sm" onclick="saveSection('priorities','prioritiesPreview')">💾 Salva</button>
-        <button class="btn ghost sm" onclick="copyToClipboard('prioritiesPreview')">📋 Copia negli Appunti</button>
         <button class="btn ghost sm" onclick="toggleChat('priorities')">💬 Chiedi modifiche all'IA</button>
       </div>
       <div class="ai-chat" id="chat-priorities">
@@ -421,6 +427,15 @@ textarea{min-height:90px;line-height:1.55;resize:vertical;}
         </button>
       </div>
 
+      <div class="note-box" style="margin-top:16px;">
+        <strong>🤖 Linee guida nazionali sull'IA nella Scuola</strong> (D.M. n. 166 del 9 agosto 2025). Vuoi che l'IA ne tenga conto nel generare il curricolo (e, di conseguenza, anche la programmazione e la progettazione UDA)?
+        <div class="row-actions" style="margin-top:10px;">
+          <button type="button" class="btn ghost sm" id="btnLineeGuidaSi" onclick="setLineeGuidaIA(true)">✅ Sì, tienine conto</button>
+          <button type="button" class="btn ghost sm" id="btnLineeGuidaNo" onclick="setLineeGuidaIA(false)">◻️ No, resta come prima</button>
+          <span class="muted" id="lineeGuidaStatus"></span>
+        </div>
+      </div>
+
       <div class="row-actions">
         <button class="btn accent" id="btnGenCurricolo" onclick="generateCurricolo()">✦ Genera / visualizza Anteprima</button>
       </div>
@@ -435,9 +450,11 @@ textarea{min-height:90px;line-height:1.55;resize:vertical;}
       <div class="row-actions">
         <button class="btn ghost sm" onclick="toggleEdit('curricoloPreview','btnEditCurricolo')" id="btnEditCurricolo">✎ Modifica curricolo</button>
         <button class="btn accent sm" onclick="saveSection('curricolo','curricoloPreview')">💾 Salva</button>
-        <button class="btn ghost sm" onclick="copyToClipboard('curricoloPreview')">📋 Copia negli Appunti</button>
-        <button class="btn primary sm" onclick="downloadDoc('Curricolo_Istituto','curricoloPreview')">⬇ Scarica curricolo</button>
-        <button class="btn ghost sm" onclick="downloadDocAsTable('Curricolo_Istituto','curricoloPreview')">📊 Scarica come tabella</button>
+        <select id="formato-curricolo" class="format-select">
+          <option value="semplice">Formato semplice</option>
+          <option value="tabella">Formato tabella</option>
+        </select>
+        <button class="btn primary sm" onclick="scaricaConFormato('curricolo','curricoloPreview','Curricolo_Istituto')">⬇ Scarica curricolo</button>
         <button class="btn ghost sm" onclick="toggleChat('curricolo')">💬 Chiedi modifiche all'IA</button>
       </div>
       <div class="ai-chat" id="chat-curricolo">
@@ -546,9 +563,11 @@ textarea{min-height:90px;line-height:1.55;resize:vertical;}
       <div class="row-actions">
         <button class="btn ghost sm" onclick="toggleEdit('programmazionePreview','btnEditProgrammazione')" id="btnEditProgrammazione">✎ Modifica curricolo</button>
         <button class="btn accent sm" onclick="saveSection('programmazione','programmazionePreview')">💾 Salva</button>
-        <button class="btn ghost sm" onclick="copyToClipboard('programmazionePreview')">📋 Copia negli Appunti</button>
-        <button class="btn primary sm" onclick="downloadDoc('Programmazione_Disciplinare','programmazionePreview')">⬇ Salva e scarica curricolo</button>
-        <button class="btn ghost sm" onclick="downloadDocAsTable('Programmazione_Disciplinare','programmazionePreview')">📊 Scarica come tabella</button>
+        <select id="formato-programmazione" class="format-select">
+          <option value="semplice">Formato semplice</option>
+          <option value="tabella">Formato tabella</option>
+        </select>
+        <button class="btn primary sm" onclick="scaricaConFormato('programmazione','programmazionePreview','Programmazione_Disciplinare')">⬇ Salva e scarica curricolo</button>
         <button class="btn ghost sm" onclick="toggleChat('programmazione')">💬 Chiedi modifiche all'IA</button>
       </div>
       <div class="ai-chat" id="chat-programmazione">
@@ -639,9 +658,11 @@ textarea{min-height:90px;line-height:1.55;resize:vertical;}
       <div class="row-actions">
         <button class="btn ghost sm" onclick="toggleEdit('valutazionePreview','btnEditValutazione')" id="btnEditValutazione">✎ Modifica</button>
         <button class="btn accent sm" onclick="saveSection('valutazione','valutazionePreview')">💾 Salva</button>
-        <button class="btn ghost sm" onclick="copyToClipboard('valutazionePreview')">📋 Copia negli Appunti</button>
-        <button class="btn primary sm" onclick="downloadDoc('Griglie_Valutazione','valutazionePreview')">⬇ Salva e scarica</button>
-        <button class="btn ghost sm" onclick="downloadDocAsTable('Griglie_Valutazione','valutazionePreview')">📊 Scarica come tabella</button>
+        <select id="formato-valutazione" class="format-select">
+          <option value="semplice">Formato semplice</option>
+          <option value="tabella">Formato tabella</option>
+        </select>
+        <button class="btn primary sm" onclick="scaricaConFormato('valutazione','valutazionePreview','Griglie_Valutazione')">⬇ Salva e scarica</button>
         <button class="btn ghost sm" onclick="toggleChat('valutazione')">💬 Chiedi modifiche all'IA</button>
       </div>
       <div class="ai-chat" id="chat-valutazione">
@@ -769,9 +790,11 @@ textarea{min-height:90px;line-height:1.55;resize:vertical;}
       <div class="row-actions">
         <button class="btn ghost sm" onclick="toggleEdit('udaPreview','btnEditUda')" id="btnEditUda">✎ Modifica progettazione</button>
         <button class="btn accent sm" onclick="saveSection('uda','udaPreview')">💾 Salva</button>
-        <button class="btn ghost sm" onclick="copyToClipboard('udaPreview')">📋 Copia negli Appunti</button>
-        <button class="btn primary sm" onclick="downloadUdaCombined('Progettazione_UDA')">⬇ Salva e scarica UDA</button>
-        <button class="btn ghost sm" onclick="downloadUdaCombinedAsTable('Progettazione_UDA')">📊 Scarica come tabella</button>
+        <select id="formato-uda" class="format-select">
+          <option value="semplice">Formato semplice</option>
+          <option value="tabella">Formato tabella</option>
+        </select>
+        <button class="btn primary sm" onclick="scaricaUdaConFormato()">⬇ Salva e scarica UDA</button>
         <button class="btn ghost sm" onclick="toggleChat('uda')">💬 Chiedi modifiche all'IA</button>
       </div>
       <div class="ai-chat" id="chat-uda">
@@ -800,9 +823,11 @@ textarea{min-height:90px;line-height:1.55;resize:vertical;}
       <div class="row-actions">
         <button class="btn ghost sm" onclick="toggleEdit('udaGrigliaPreview','btnEditUdaGriglia')" id="btnEditUdaGriglia">✎ Modifica</button>
         <button class="btn accent sm" onclick="saveSection('udaGriglia','udaGrigliaPreview')">💾 Salva</button>
-        <button class="btn ghost sm" onclick="copyToClipboard('udaGrigliaPreview')">📋 Copia negli Appunti</button>
-        <button class="btn primary sm" onclick="downloadDoc('Griglia_Valutazione_UDA','udaGrigliaPreview')">⬇ Scarica</button>
-        <button class="btn ghost sm" onclick="downloadDocAsTable('Griglia_Valutazione_UDA','udaGrigliaPreview')">📊 Scarica come tabella</button>
+        <select id="formato-udaGriglia" class="format-select">
+          <option value="semplice">Formato semplice</option>
+          <option value="tabella">Formato tabella</option>
+        </select>
+        <button class="btn primary sm" onclick="scaricaConFormato('udaGriglia','udaGrigliaPreview','Griglia_Valutazione_UDA')">⬇ Scarica</button>
         <button class="btn ghost sm" onclick="toggleChat('udaGriglia')">💬 Chiedi modifiche all'IA</button>
       </div>
       <div class="ai-chat" id="chat-udaGriglia">
@@ -817,7 +842,7 @@ textarea{min-height:90px;line-height:1.55;resize:vertical;}
 </section>
 
 <div class="footer-note">
-  <img src="logo.png" alt="EduPlan — a cura della Prof.ssa Maddalena Focetola" style="height:70px;width:auto;display:block;margin:0 auto 10px;">
+  <img src="logo.png" alt="EduPlan — a cura della Prof.ssa Maddalena Focetola" class="logo-soft" style="height:70px;width:auto;display:block;margin:0 auto 10px;">
   EDUPLAN — a cura della Prof.ssa Maddalena Focetola · strumento di supporto alla progettazione didattica · Riferimenti: D.M. 254/2012, D.M. 221/2025, D.M. 14/2024
 </div>
 
@@ -855,6 +880,7 @@ const SINTESI_2012 = {
   "La conoscenza del mondo":"Esplorazione, numero e spazio, oggetti/fenomeni/viventi, prime classificazioni."
 };
 const SINTESI_2025 = "Le Nuove Indicazioni Nazionali 2025 (D.M. 221/2025) si fondano su cinque pilastri: (1) Didattica ed Empatia — educazione alle relazioni e ai sentimenti per prevenire la violenza contro le donne; (2) Inclusione e Accoglienza — pieno supporto agli alunni con background migratorio, con misure specifiche per la loro integrazione; (3) Alleanza Educativa — nuovo patto di corresponsabilità tra istituzioni scolastiche e famiglia; (4) Innovazione e Competenze — forte attenzione all'educazione ambientale, all'innovazione tecnologica e alla media literacy; (5) Cambiamenti disciplinari — per la scuola primaria, in Storia il focus è sulle origini della civiltà occidentale; per la secondaria, si rafforzano l'alfabetizzazione visiva, lo studio del patrimonio artistico e le competenze digitali. Per ciascuna disciplina le Nuove Indicazioni richiedono di esplicitare 'perché si studia la disciplina', i riferimenti culturali, e obiettivi/competenze/conoscenze coerenti con le Competenze Chiave europee (D.M. 14/2024).";
+const SINTESI_LINEE_GUIDA_IA = "Linee guida per l'introduzione dell'Intelligenza Artificiale nelle Istituzioni scolastiche (Ministero dell'Istruzione e del Merito, D.M. n. 166 del 9 agosto 2025). Principi chiave da integrare nella progettazione: mantenere sempre la supervisione e la responsabilità pedagogica del docente, che resta centrale e non delegabile all'IA; sviluppare negli studenti un approccio critico verso gli strumenti di IA, insegnando a riconoscerne limiti, possibili errori ('allucinazioni') e bias, non solo a utilizzarli; usare l'IA come supporto alla differenziazione didattica (materiali personalizzati, mappe, esercitazioni) mantenendo equità e inclusione, con particolare attenzione agli alunni con disabilità, DSA e BES coerentemente con quanto previsto da PEI e PDP; ripensare le modalità di verifica e valutazione spostando l'enfasi dalla pura memorizzazione (facilmente aggirabile con l'IA) verso comprensione profonda, pensiero critico, capacità argomentative e applicative; tutelare la privacy degli studenti nell'uso di strumenti di IA; promuovere la consapevolezza digitale ed etica come competenza trasversale.";
 
 /* =====================================================================
    STATO E PERSISTENZA (window.storage se disponibile, altrimenti localStorage)
@@ -879,6 +905,7 @@ let state = {
   valutazioneTipi:{diagnostica:true, iniziale:true, formativa:true, autovalutativa:true, metacognitiva:true, finale:true},
   udaCompetenze:[],
   udaTrasversali:[],
+  useLineeGuidaIA:false,
   completed:{priorities:false, curricolo:false, programmazione:false, valutazione:false, uda:false}
 };
 async function loadRawState(){
@@ -1178,22 +1205,6 @@ function abortProgress(key, timer){
   hideProgress(key);
 }
 
-async function copyToClipboard(previewId){
-  const text = document.getElementById(previewId).innerText;
-  if(!text || !text.trim()){ toast('Non c\'è ancora nulla da copiare.', {err:true}); return; }
-  try{
-    await navigator.clipboard.writeText(text);
-    toast('Copiato negli appunti ✓', {ok:true});
-  }catch(e){
-    const ta = document.createElement('textarea');
-    ta.value = text; ta.style.position='fixed'; ta.style.opacity='0';
-    document.body.appendChild(ta); ta.select();
-    try{ document.execCommand('copy'); toast('Copiato negli appunti ✓', {ok:true}); }
-    catch(e2){ toast('Non sono riuscito a copiare automaticamente: seleziona e copia il testo manualmente.', {err:true}); }
-    document.body.removeChild(ta);
-  }
-}
-
 /* =====================================================================
    RIEPILOGO DEL CONTESTO (mostra cosa è già stato acquisito)
    ===================================================================== */
@@ -1348,6 +1359,19 @@ function downloadDocAsTable(filename, previewId){
   const tableHtml = textToTableHtml(text);
   triggerWordDownload(filename+'_tabella.doc', wrapWordDocument(tableHtml, containsMarkdownTable(text)));
 }
+// Un unico pulsante "Scarica" che legge il formato scelto nel menu a tendina accanto
+function scaricaConFormato(key, previewId, filename){
+  const sel = document.getElementById('formato-'+key);
+  const formato = sel ? sel.value : 'semplice';
+  if(formato==='tabella') downloadDocAsTable(filename, previewId);
+  else downloadDoc(filename, previewId);
+}
+function scaricaUdaConFormato(){
+  const sel = document.getElementById('formato-uda');
+  const formato = sel ? sel.value : 'semplice';
+  if(formato==='tabella') downloadUdaCombinedAsTable('Progettazione_UDA');
+  else downloadUdaCombined('Progettazione_UDA');
+}
 
 // Progettazione UDA: unisce automaticamente il testo dell'UDA e, se presente, la sua griglia di
 // valutazione specifica, sia nel download semplice sia in quello a tabella.
@@ -1492,15 +1516,16 @@ async function generateCurricoloChunk(task, ptofText){
   const priorities = state.priorities || '(nessuna priorità generata: usa direttamente il PTOF)';
   const existingFull = state.existingDocs.curricolo;
   const existingExcerpt = existingFull ? extractExistingExcerpt(existingFull, task.disciplina || "infanzia") : '';
+  const lineeGuidaNota = state.useLineeGuidaIA ? " Tieni conto anche delle Linee guida nazionali sull'IA nella Scuola: "+SINTESI_LINEE_GUIDA_IA : '';
   const adattaNota = existingExcerpt ? "Il docente possiede già un curricolo d'istituto (estratto pertinente fornito sotto): ADATTALO e aggiornalo alle indicazioni normative applicabili invece di ripartire da zero, mantenendo quanto è già valido. " : "";
   if(task.ord==='infanzia'){
-    const system = "Sei un esperto di curricolo per la scuola dell'infanzia italiana. "+adattaNota+"Applica le Nuove Indicazioni Nazionali 2025 (D.M. 221/2025): "+SINTESI_2025+" Genera un curricolo verticale d'istituto sintetico ma completo per i 5 campi di esperienza (Il sé e l'altro; Il corpo e il movimento; Immagini, suoni, colori; I discorsi e le parole; La conoscenza del mondo), calibrato sul PTOF e sulle priorità dell'istituto. Per ciascun campo indica: finalità, competenze attese, obiettivi specifici di apprendimento (OSA) per fascia d'età (3-4, 4-5, 5-6 anni). Formato a titoli e punti elenco, italiano, senza premesse.";
+    const system = "Sei un esperto di curricolo per la scuola dell'infanzia italiana. "+adattaNota+"Applica le Nuove Indicazioni Nazionali 2025 (D.M. 221/2025): "+SINTESI_2025+" Genera un curricolo verticale d'istituto sintetico ma completo per i 5 campi di esperienza (Il sé e l'altro; Il corpo e il movimento; Immagini, suoni, colori; I discorsi e le parole; La conoscenza del mondo), calibrato sul PTOF e sulle priorità dell'istituto. Per ciascun campo indica: finalità, competenze attese, obiettivi specifici di apprendimento (OSA) per fascia d'età (3-4, 4-5, 5-6 anni)."+lineeGuidaNota+" Formato a titoli e punti elenco, italiano, senza premesse.";
     const user = (existingExcerpt ? "CURRICOLO GIÀ IN POSSESSO (estratto):\n"+existingExcerpt+"\n\n" : "")+"PRIORITÀ D'ISTITUTO:\n"+priorities+"\n\nCONTESTO PTOF:\n"+ptofText.slice(0,3000);
     return "## SCUOLA DELL'INFANZIA\n" + await callBackend(system, user, 3000);
   } else {
     const rif = SINTESI_2012[task.disciplina] || '';
     const finali = task.ord==='primaria' ? "fine classe 3ª e fine classe 5ª" : "fine classe 3ª";
-    const system = "Sei un esperto di curricolo verticale per la "+ORDINI[task.ord].label+" italiana, disciplina '"+task.disciplina+"'. "+adattaNota+"Genera il curricolo d'istituto per questa disciplina applicando le Indicazioni 2012 (D.M. 254/2012) come struttura portante — traguardi di riferimento: "+rif+" — con obiettivi specifici di apprendimento e conoscenze differenziati per "+finali+". Integra inoltre, dove pertinente, i contenuti delle Nuove Indicazioni 2025 che si applicheranno alla classe prima: "+SINTESI_2025+" Calibra tutto sul PTOF e sulle priorità dell'istituto fornite. Indica: conoscenze essenziali/significative/rilevanti, obiettivi specifici di apprendimento, traguardi per lo sviluppo delle competenze. Punti elenco, italiano, senza premesse.";
+    const system = "Sei un esperto di curricolo verticale per la "+ORDINI[task.ord].label+" italiana, disciplina '"+task.disciplina+"'. "+adattaNota+"Genera il curricolo d'istituto per questa disciplina applicando le Indicazioni 2012 (D.M. 254/2012) come struttura portante — traguardi di riferimento: "+rif+" — con obiettivi specifici di apprendimento e conoscenze differenziati per "+finali+". Integra inoltre, dove pertinente, i contenuti delle Nuove Indicazioni 2025 che si applicheranno alla classe prima: "+SINTESI_2025+" Calibra tutto sul PTOF e sulle priorità dell'istituto fornite. Indica: conoscenze essenziali/significative/rilevanti, obiettivi specifici di apprendimento, traguardi per lo sviluppo delle competenze."+lineeGuidaNota+" Punti elenco, italiano, senza premesse.";
     const user = (existingExcerpt ? "CURRICOLO GIÀ IN POSSESSO PER QUESTA DISCIPLINA (estratto):\n"+existingExcerpt+"\n\n" : "")+"PRIORITÀ D'ISTITUTO:\n"+priorities+"\n\nCONTESTO PTOF:\n"+ptofText.slice(0,2000);
     return "## "+ORDINI[task.ord].label.toUpperCase()+" — "+task.disciplina+"\n" + await callBackend(system, user, 3000);
   }
@@ -1562,6 +1587,20 @@ function toggleUdaCompetenza(el){
   }
   saveState();
 }
+function setLineeGuidaIA(value){
+  state.useLineeGuidaIA = value;
+  saveState();
+  renderLineeGuidaToggle();
+}
+function renderLineeGuidaToggle(){
+  const si = document.getElementById('btnLineeGuidaSi');
+  const no = document.getElementById('btnLineeGuidaNo');
+  const status = document.getElementById('lineeGuidaStatus');
+  if(!si || !no) return;
+  si.classList.toggle('accent', !!state.useLineeGuidaIA);
+  no.classList.toggle('accent', !state.useLineeGuidaIA);
+  status.textContent = state.useLineeGuidaIA ? 'Attivo — verranno considerate anche in Programmazione e UDA.' : '';
+}
 function toggleUdaTrasversale(el){
   const t = el.dataset.t;
   el.classList.toggle('on');
@@ -1586,7 +1625,8 @@ async function generateProgrammazione(){
   try{
     const rifNorma = f==='2025' ? SINTESI_2025 : (SINTESI_2012[disciplina]||'');
     const existing = state.existingDocs.programmazione;
-    const system = "Sei un esperto di progettazione didattica per la "+ORDINI[ordine].label+" italiana. "+(existing ? "Il docente possiede già una programmazione disciplinare (fornita sotto): il tuo compito è ADATTARLA e aggiornarla alle indicazioni normative applicabili, mantenendo quanto è già valido e integrando ciò che manca — non ripartire da zero se non necessario. " : "Genera la programmazione disciplinare di '"+disciplina+"' per la "+ORDINI[ordine].classi[classe]+". ")+"Riferimento normativo: "+(f==='2025'?'D.M. 221/2025 — Nuove Indicazioni':'D.M. 254/2012')+" — "+rifNorma+". Basati sul curricolo d'istituto fornito, sul contesto classe (inclusi eventuali alunni BES: distingui metodologie per DSA/PDP, svantaggio linguistico e socio-culturale, ADHD e altro) e sulle priorità del PTOF. Includi: nuclei tematici/argomenti per periodo, attività didattiche, metodologie, strumenti, criteri di verifica in itinere. Formato a titoli e punti elenco, italiano, senza premesse.";
+    const lineeGuidaNota = state.useLineeGuidaIA ? " Tieni conto anche delle Linee guida nazionali sull'IA nella Scuola: "+SINTESI_LINEE_GUIDA_IA : '';
+    const system = "Sei un esperto di progettazione didattica per la "+ORDINI[ordine].label+" italiana. "+(existing ? "Il docente possiede già una programmazione disciplinare (fornita sotto): il tuo compito è ADATTARLA e aggiornarla alle indicazioni normative applicabili, mantenendo quanto è già valido e integrando ciò che manca — non ripartire da zero se non necessario. " : "Genera la programmazione disciplinare di '"+disciplina+"' per la "+ORDINI[ordine].classi[classe]+". ")+"Riferimento normativo: "+(f==='2025'?'D.M. 221/2025 — Nuove Indicazioni':'D.M. 254/2012')+" — "+rifNorma+". Basati sul curricolo d'istituto fornito, sul contesto classe (inclusi eventuali alunni BES: distingui metodologie per DSA/PDP, svantaggio linguistico e socio-culturale, ADHD e altro) e sulle priorità del PTOF. Includi: nuclei tematici/argomenti per periodo, attività didattiche, metodologie, strumenti, criteri di verifica in itinere."+lineeGuidaNota+" Formato a titoli e punti elenco, italiano, senza premesse.";
     const user = (existing ? "PROGRAMMAZIONE GIÀ IN POSSESSO DEL DOCENTE (da adattare):\n"+existing.slice(0,3000)+"\n\n" : "")+"CURRICOLO D'ISTITUTO (estratto):\n"+extractRelevant(disciplina)+"\n\nCONTESTO CLASSE (con eventuali BES):\n"+(contesto||'(non specificato)')+"\n\nPRIORITÀ D'ISTITUTO:\n"+(state.priorities||'(nessuna)');
     const out = await callBackend(system, user, 4500);
     document.getElementById('programmazionePreview').innerText = out;
@@ -1687,7 +1727,7 @@ async function generateUda(){
       "Il compito autentico e il prodotto finale forniti dal docente sono il cuore della progettazione: costruisci tutto il resto in coerenza con essi, in modo che risultino credibili e realizzabili.\n\n"+
       "La progettazione DEVE contenere, in questo ordine, tutte le seguenti sezioni con questi titoli esatti (##):\n"+
       "1. Titolo dell'UDA\n2. Destinatari\n3. Discipline coinvolte\n4. Periodo e durata\n5. Competenze attese\n6. Traguardi per lo sviluppo delle competenze\n7. Obiettivi di apprendimento\n8. Prerequisiti\n9. Compito autentico / Situazione-problema\n10. Prodotto finale\n11. Articolazione delle attività (fasi del percorso)\n12. Metodologie didattiche\n13. Strumenti e risorse\n14. Strategie di inclusione e personalizzazione (PEI, DSA, BES, NAI)\n15. Verifica degli apprendimenti\n16. Valutazione (criteri e rubriche)\n17. Autovalutazione degli studenti\n18. Documentazione e diffusione del percorso\n\n"+
-      "Per le sezioni 1, 3, 4, 9, 10 usa/elabora quanto fornito dal docente senza stravolgerlo. Per la sezione 6 (Traguardi) e 5 (Competenze attese) fai riferimento esplicito alle competenze chiave indicate e, se pertinenti, ai collegamenti trasversali forniti (Educazione Civica, Agenda 2030, LifeComp, GreenComp, DigComp), citandoli nelle sezioni dove rilevanti (in particolare 5, 6, 11). Riferimento normativo per obiettivi/traguardi: "+(f==='2025'?'D.M. 221/2025 — '+SINTESI_2025:'D.M. 254/2012 — '+(SINTESI_2012[discipline.split(',')[0].trim()]||''))+". Competenze chiave secondo D.M. 14/2024. Formato a titoli ## e punti elenco, italiano, senza premesse né conclusioni fuori dalle sezioni indicate.";
+      "Per le sezioni 1, 3, 4, 9, 10 usa/elabora quanto fornito dal docente senza stravolgerlo. Per la sezione 6 (Traguardi) e 5 (Competenze attese) fai riferimento esplicito alle competenze chiave indicate e, se pertinenti, ai collegamenti trasversali forniti (Educazione Civica, Agenda 2030, LifeComp, GreenComp, DigComp), citandoli nelle sezioni dove rilevanti (in particolare 5, 6, 11). Riferimento normativo per obiettivi/traguardi: "+(f==='2025'?'D.M. 221/2025 — '+SINTESI_2025:'D.M. 254/2012 — '+(SINTESI_2012[discipline.split(',')[0].trim()]||''))+". Competenze chiave secondo D.M. 14/2024."+(state.useLineeGuidaIA ? " Tieni conto anche delle Linee guida nazionali sull'IA nella Scuola, in particolare nelle sezioni 12 (Metodologie) e 13 (Strumenti e risorse) se prevedono l'uso di IA: "+SINTESI_LINEE_GUIDA_IA : '')+" Formato a titoli ## e punti elenco, italiano, senza premesse né conclusioni fuori dalle sezioni indicate.";
 
     const user = (existing ? "PROGETTAZIONE GIÀ IN POSSESSO DEL DOCENTE (da adattare):\n"+existing.slice(0,3000)+"\n\n" : "")+
       "TITOLO PROPOSTO DAL DOCENTE: "+(titolo||'(nessuno, proponilo tu)')+
@@ -1814,6 +1854,7 @@ async function populateUI(){
 
   updateGates();
   renderAllRecaps();
+  renderLineeGuidaToggle();
 }
 init();
 </script>
