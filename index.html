@@ -1155,6 +1155,27 @@ async function callBackend(systemInstruction, userText, maxOutputTokens=3000){
 }
 function escapeHtml(s){ const d=document.createElement('div'); d.innerText=s; return d.innerHTML; }
 
+// Riprova automaticamente in caso di sovraccarico/timeout temporanei (oltre ai tentativi già fatti
+// dal server), così un singolo pezzo di documento non resta incompleto per un errore passeggero.
+async function callBackendWithRetry(systemInstruction, userText, maxOutputTokens, onRetry){
+  const MAX_CLIENT_RETRIES = 2;
+  const DELAY_MS = 4000;
+  let lastError;
+  for(let attempt=0; attempt<=MAX_CLIENT_RETRIES; attempt++){
+    try{
+      return await callBackend(systemInstruction, userText, maxOutputTokens);
+    }catch(e){
+      lastError = e;
+      const m = (e.message||'').toLowerCase();
+      const retryable = m.includes('occupat') || m.includes('timeout') || m.includes('tempo') || m.includes('rete') || m.includes('errore del server') || m.includes('risposta non valida');
+      if(!retryable || attempt===MAX_CLIENT_RETRIES) throw e;
+      if(onRetry) onRetry(attempt+1, MAX_CLIENT_RETRIES);
+      await new Promise(r=>setTimeout(r, DELAY_MS));
+    }
+  }
+  throw lastError;
+}
+
 /* =====================================================================
    EDIT / SAVE / DOWNLOAD COMUNI
    ===================================================================== */
@@ -1421,7 +1442,7 @@ async function sendChatRequest(key){
   try{
     const system = "Sei un tutor esperto di didattica e progettazione curricolare per la scuola italiana, che affianca il docente. L'utente ti mostra un documento già generato e ti scrive una richiesta: può chiederti di modificarlo, oppure porti una domanda o un parere sui contenuti (in questo caso commenta come farebbe un tutor: dai un riscontro pedagogico onesto, costruttivo, con eventuali suggerimenti di miglioramento). Rispondi SEMPRE e SOLO in questo formato, con questi due marcatori esatti e nient'altro fuori da essi:\n---COMMENTO---\n(qui il tuo commento/parere in 2-5 frasi: spiega cosa hai cambiato, oppure rispondi alla domanda/richiesta di parere del docente)\n---DOCUMENTO---\n(qui il documento COMPLETO, in italiano, con struttura a titoli e punti elenco: identico a quello attuale se la richiesta era solo una domanda senza modifiche, oppure aggiornato se la richiesta implicava una modifica)";
     const user = "DOCUMENTO ATTUALE:\n"+current+"\n\nRICHIESTA/DOMANDA DELL'UTENTE:\n"+text;
-    const raw = await callBackend(system, user, 4500);
+    const raw = await callBackendWithRetry(system, user, 4500);
     const parsed = parseTutorResponse(raw);
     document.getElementById(previewId).innerText = parsed.documento;
     chatHistory[key].push({role:'ai', text: parsed.commento || 'Documento aggiornato secondo la richiesta.'});
@@ -1453,7 +1474,7 @@ async function generatePriorities(){
   const timer = startIndeterminateProgress('priorities', 'Analisi del PTOF in corso…');
   try{
     const system = "Sei un esperto di progettazione curricolare per la scuola italiana. Analizza il testo di un PTOF e restituisci in italiano, in forma sintetica a punti, le priorità strategiche dell'istituto (inclusione, rapporto con il territorio, ampliamento dell'offerta, contrasto alla dispersione, ecc.). Quando pertinente, segnala il collegamento con i pilastri delle Nuove Indicazioni 2025: "+SINTESI_2025+" Non inventare informazioni assenti nel testo. Restituisci solo l'elenco puntato, senza premesse.";
-    const out = await callBackend(system, "Testo del PTOF:\n\n"+src.slice(0,8000), 2000);
+    const out = await callBackendWithRetry(system, "Testo del PTOF:\n\n"+src.slice(0,8000), 2000);
     document.getElementById('prioritiesPreview').innerText = out;
     state.priorities = out; await saveState();
     document.getElementById('prioritiesStatus').textContent = 'Priorità generate.';
@@ -1521,13 +1542,13 @@ async function generateCurricoloChunk(task, ptofText){
   if(task.ord==='infanzia'){
     const system = "Sei un esperto di curricolo per la scuola dell'infanzia italiana. "+adattaNota+"Applica le Nuove Indicazioni Nazionali 2025 (D.M. 221/2025): "+SINTESI_2025+" Genera un curricolo verticale d'istituto sintetico ma completo per i 5 campi di esperienza (Il sé e l'altro; Il corpo e il movimento; Immagini, suoni, colori; I discorsi e le parole; La conoscenza del mondo), calibrato sul PTOF e sulle priorità dell'istituto. Per ciascun campo indica: finalità, competenze attese, obiettivi specifici di apprendimento (OSA) per fascia d'età (3-4, 4-5, 5-6 anni)."+lineeGuidaNota+" Formato a titoli e punti elenco, italiano, senza premesse.";
     const user = (existingExcerpt ? "CURRICOLO GIÀ IN POSSESSO (estratto):\n"+existingExcerpt+"\n\n" : "")+"PRIORITÀ D'ISTITUTO:\n"+priorities+"\n\nCONTESTO PTOF:\n"+ptofText.slice(0,3000);
-    return "## SCUOLA DELL'INFANZIA\n" + await callBackend(system, user, 3000);
+    return "## SCUOLA DELL'INFANZIA\n" + await callBackendWithRetry(system, user, 3000);
   } else {
     const rif = SINTESI_2012[task.disciplina] || '';
     const finali = task.ord==='primaria' ? "fine classe 3ª e fine classe 5ª" : "fine classe 3ª";
     const system = "Sei un esperto di curricolo verticale per la "+ORDINI[task.ord].label+" italiana, disciplina '"+task.disciplina+"'. "+adattaNota+"Genera il curricolo d'istituto per questa disciplina applicando le Indicazioni 2012 (D.M. 254/2012) come struttura portante — traguardi di riferimento: "+rif+" — con obiettivi specifici di apprendimento e conoscenze differenziati per "+finali+". Integra inoltre, dove pertinente, i contenuti delle Nuove Indicazioni 2025 che si applicheranno alla classe prima: "+SINTESI_2025+" Calibra tutto sul PTOF e sulle priorità dell'istituto fornite. Indica: conoscenze essenziali/significative/rilevanti, obiettivi specifici di apprendimento, traguardi per lo sviluppo delle competenze."+lineeGuidaNota+" Punti elenco, italiano, senza premesse.";
     const user = (existingExcerpt ? "CURRICOLO GIÀ IN POSSESSO PER QUESTA DISCIPLINA (estratto):\n"+existingExcerpt+"\n\n" : "")+"PRIORITÀ D'ISTITUTO:\n"+priorities+"\n\nCONTESTO PTOF:\n"+ptofText.slice(0,2000);
-    return "## "+ORDINI[task.ord].label.toUpperCase()+" — "+task.disciplina+"\n" + await callBackend(system, user, 3000);
+    return "## "+ORDINI[task.ord].label.toUpperCase()+" — "+task.disciplina+"\n" + await callBackendWithRetry(system, user, 3000);
   }
 }
 function extractExistingExcerpt(fullText, keyword){
@@ -1628,7 +1649,7 @@ async function generateProgrammazione(){
     const lineeGuidaNota = state.useLineeGuidaIA ? " Tieni conto anche delle Linee guida nazionali sull'IA nella Scuola: "+SINTESI_LINEE_GUIDA_IA : '';
     const system = "Sei un esperto di progettazione didattica per la "+ORDINI[ordine].label+" italiana. "+(existing ? "Il docente possiede già una programmazione disciplinare (fornita sotto): il tuo compito è ADATTARLA e aggiornarla alle indicazioni normative applicabili, mantenendo quanto è già valido e integrando ciò che manca — non ripartire da zero se non necessario. " : "Genera la programmazione disciplinare di '"+disciplina+"' per la "+ORDINI[ordine].classi[classe]+". ")+"Riferimento normativo: "+(f==='2025'?'D.M. 221/2025 — Nuove Indicazioni':'D.M. 254/2012')+" — "+rifNorma+". Basati sul curricolo d'istituto fornito, sul contesto classe (inclusi eventuali alunni BES: distingui metodologie per DSA/PDP, svantaggio linguistico e socio-culturale, ADHD e altro) e sulle priorità del PTOF. Includi: nuclei tematici/argomenti per periodo, attività didattiche, metodologie, strumenti, criteri di verifica in itinere."+lineeGuidaNota+" Formato a titoli e punti elenco, italiano, senza premesse.";
     const user = (existing ? "PROGRAMMAZIONE GIÀ IN POSSESSO DEL DOCENTE (da adattare):\n"+existing.slice(0,3000)+"\n\n" : "")+"CURRICOLO D'ISTITUTO (estratto):\n"+extractRelevant(disciplina)+"\n\nCONTESTO CLASSE (con eventuali BES):\n"+(contesto||'(non specificato)')+"\n\nPRIORITÀ D'ISTITUTO:\n"+(state.priorities||'(nessuna)');
-    const out = await callBackend(system, user, 4500);
+    const out = await callBackendWithRetry(system, user, 4500);
     document.getElementById('programmazionePreview').innerText = out;
     state.programmazione = out; await saveState();
     document.getElementById('programmazioneStatus').textContent = 'Programmazione generata.';
@@ -1678,7 +1699,7 @@ async function generateValutazione(){
     try{
       const system = "Sei un esperto di valutazione scolastica in Italia. Genera UNA griglia di valutazione di tipo '"+VALUTAZIONE_LABELS[tipo]+"' per la disciplina '"+(disciplina||'(non specificata)')+"', "+(ORDINI[ordine]?ORDINI[ordine].label:'')+" "+(ordine&&classe?ORDINI[ordine].classi[classe]:'')+", riferimento "+(f==='2025'?'D.M. 221/2025':'D.M. 254/2012')+". Collega gli indicatori agli OSA della programmazione e alle Competenze Chiave (D.M. 14/2024). Tieni conto del contesto classe e dell'attività indicata.\n\nFORMATO OBBLIGATORIO: presenta la griglia come una tabella in sintassi Markdown con il carattere pipe (|), con questa struttura esatta:\n| Indicatore | Iniziale | Base | Intermedio | Avanzato |\n|---|---|---|---|---|\n| ... | ... | ... | ... | ... |\n(una riga per ogni indicatore, 4-6 indicatori). Dopo la tabella aggiungi 2-3 note operative in punti elenco (non in tabella). Italiano, senza premesse.";
       const user = "ATTIVITÀ/PERCORSO:\n"+(attivita||'(non specificata)')+"\n\nPROGRAMMAZIONE DI RIFERIMENTO (estratto):\n"+state.programmazione.slice(0,2200);
-      full += "## GRIGLIA "+VALUTAZIONE_LABELS[tipo].toUpperCase()+"\n" + await callBackend(system, user, 2500) + "\n\n";
+      full += "## GRIGLIA "+VALUTAZIONE_LABELS[tipo].toUpperCase()+"\n" + await callBackendWithRetry(system, user, 2500) + "\n\n";
     }catch(e){
       full += '\n[Errore per '+VALUTAZIONE_LABELS[tipo]+': '+e.message+']\n\n';
       toast(e.message, {err:true, duration:6000});
@@ -1744,7 +1765,7 @@ async function generateUda(){
       "\n\nPRIORITÀ D'ISTITUTO:\n"+(state.priorities||'(nessuna)')+
       (richiesta ? "\n\nULTERIORI INDICAZIONI DEL DOCENTE:\n"+richiesta : "");
 
-    const out = await callBackend(system, user, 6000);
+    const out = await callBackendWithRetry(system, user, 6000);
     document.getElementById('udaPreview').innerText = out;
     state.uda = out; await saveState();
     document.getElementById('udaStatus').textContent = 'Progettazione UDA generata.';
@@ -1766,7 +1787,7 @@ async function generateUdaGriglia(){
   try{
     const system = "Sei un esperto di valutazione scolastica in Italia. Genera una griglia di valutazione autentica, pensata specificamente per la Unità di Apprendimento (UDA) fornita sotto — non una griglia generica di disciplina, ma coerente con gli obiettivi, le competenze e le attività proprie di QUESTA UDA. Deve essere coerente anche con la programmazione disciplinare, il curricolo d'istituto e il riferimento normativo applicabile ("+(f==='2025'?'D.M. 221/2025':'D.M. 254/2012')+", competenze chiave D.M. 14/2024).\n\nFORMATO OBBLIGATORIO: presenta la griglia come tabella in sintassi Markdown con il carattere pipe (|):\n| Indicatore | Iniziale | Base | Intermedio | Avanzato |\n|---|---|---|---|---|\n| ... | ... | ... | ... | ... |\n(4-6 indicatori, derivati dagli obiettivi/competenze specifici dell'UDA). Dopo la tabella aggiungi 2-3 note su come condividere la valutazione con studenti e famiglie. Italiano, senza premesse.";
     const user = "PROGETTAZIONE UDA DA VALUTARE:\n"+state.uda.slice(0,3000)+"\n\nPROGRAMMAZIONE DISCIPLINARE DI RIFERIMENTO (estratto):\n"+(state.programmazione||'').slice(0,1500)+"\n\nCURRICOLO D'ISTITUTO (estratto, disciplina "+(disciplina||'')+"):\n"+extractRelevant(disciplina||'')+"\n\nPRIORITÀ D'ISTITUTO:\n"+(state.priorities||'(nessuna)');
-    const out = await callBackend(system, user, 3000);
+    const out = await callBackendWithRetry(system, user, 3000);
     document.getElementById('udaGrigliaPreview').innerText = out;
     state.udaGriglia = out; await saveState();
     document.getElementById('udaGrigliaStatus').textContent = 'Griglia generata.';
