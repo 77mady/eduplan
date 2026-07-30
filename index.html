@@ -94,26 +94,34 @@ textarea,input,select{font-family:inherit;font-size:14px;}
     radial-gradient(600px 400px at 82% 10%, rgba(232,184,75,.28), transparent 60%),
     radial-gradient(500px 380px at 8% 85%, rgba(47,111,94,.16), transparent 60%);
 }
-/* Logo nello spazio vuoto a destra dell'hero: più evidente (dimensione e opacità
-   maggiori) ma con i contorni sfumati tramite una maschera radiale, così si fonde
-   con lo sfondo della pagina invece di sembrare un'immagine incollata sopra.
-   Centrato verticalmente rispetto al blocco di testo. Nascosto sotto i 900px dove
-   quello spazio libero non c'è più. */
+/* Hero a due colonne: testo a sinistra, logo + nome a destra. Sotto i 900px la colonna
+   del logo passa sopra al testo, centrata, con dimensioni più contenute. */
+.hero-grid{display:flex;align-items:center;justify-content:space-between;gap:48px;flex-wrap:wrap;}
+.hero-copy{flex:1 1 560px;min-width:0;}
+.hero-brand{flex:0 0 auto;display:flex;flex-direction:column;align-items:center;gap:16px;margin-left:auto;}
 .hero-logo{
-  position:absolute;
-  top:50%;
-  right:6%;
-  transform:translateY(-50%);
-  height:220px;
+  height:210px;
   width:auto;
-  opacity:.85;
-  z-index:0;
-  pointer-events:none;
-  -webkit-mask-image:radial-gradient(closest-side, rgba(0,0,0,1) 45%, rgba(0,0,0,0) 100%);
-  mask-image:radial-gradient(closest-side, rgba(0,0,0,1) 45%, rgba(0,0,0,0) 100%);
+  opacity:.9;
+  -webkit-mask-image:radial-gradient(closest-side, rgba(0,0,0,1) 55%, rgba(0,0,0,0) 100%);
+  mask-image:radial-gradient(closest-side, rgba(0,0,0,1) 55%, rgba(0,0,0,0) 100%);
+}
+.hero-brand-name{
+  font-family:var(--font-signature);
+  font-style:italic;
+  font-weight:600;
+  font-size:19px;
+  color:var(--brand-deep);
+  text-align:center;
+  letter-spacing:.01em;
 }
 @media (max-width:900px){
-  .hero-logo{display:none;}
+  .hero-grid{flex-direction:column-reverse;text-align:center;gap:28px;}
+  .hero-copy{flex-basis:auto;}
+  .hero-brand{margin:0;}
+  .hero-logo{height:120px;}
+  .hero-brand-name{font-size:17px;}
+  .hero-sub{margin-left:auto;margin-right:auto;}
 }
 .eyebrow{
   font-family:var(--font-mono);font-size:12px;letter-spacing:.16em;text-transform:uppercase;
@@ -343,13 +351,18 @@ textarea{min-height:90px;line-height:1.55;resize:vertical;}
 
 <!-- ============ SEZIONE 1 — HERO ============ -->
 <section class="hero">
-  <img src="logo.png" alt="" aria-hidden="true" class="hero-logo">
-  <div class="wrap">
-    <div class="eyebrow">Piattaforma IA per la scuola italiana</div>
-    <h1>EDU<span>PLAN</span></h1>
-    <p class="hero-sub">La Web App intelligente per i docenti italiani: genera curricoli d'istituto, programmazioni disciplinari e griglie di valutazione in piena conformità con le <strong>Nuove Indicazioni Nazionali 2025 (D.M. 221/2025)</strong> e le <strong>Indicazioni 2012 (D.M. 254/2012)</strong>, integrata con il PTOF della tua scuola e potenziata dall'intelligenza artificiale.</p>
-    <div class="badges-row"></div>
-    <button class="btn primary" onclick="startPlanning()">Inizia a progettare →</button>
+  <div class="wrap hero-grid">
+    <div class="hero-copy">
+      <div class="eyebrow">Piattaforma IA per la scuola italiana</div>
+      <h1>EDU<span>PLAN</span></h1>
+      <p class="hero-sub">La Web App intelligente per docenti: genera curricoli d'istituto, programmazioni disciplinari e griglie di valutazione in conformità con le <strong>Nuove Indicazioni Nazionali 2025 (D.M. 221/2025)</strong> e le <strong>Indicazioni 2012 (D.M. 254/2012)</strong>, integrata con il PTOF della tua scuola e potenziata dall'intelligenza artificiale.</p>
+      <div class="badges-row"></div>
+      <button class="btn primary" onclick="startPlanning()">Inizia a progettare →</button>
+    </div>
+    <div class="hero-brand">
+      <img src="logo.png" alt="EduPlan" class="hero-logo">
+      <div class="hero-brand-name">Prof.ssa Maddalena Focetola</div>
+    </div>
   </div>
 </section>
 
