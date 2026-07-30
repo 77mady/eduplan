@@ -1160,20 +1160,21 @@ function escapeHtml(s){ const d=document.createElement('div'); d.innerText=s; re
 
 // Riprova automaticamente in caso di sovraccarico/timeout temporanei (oltre ai tentativi già fatti
 // dal server), così un singolo pezzo di documento non resta incompleto per un errore passeggero.
+// Le pause crescono ad ogni tentativo (4s, 8s, 15s) per dare al provider IA più margine per
+// tornare disponibile prima di rinunciare.
 async function callBackendWithRetry(systemInstruction, userText, maxOutputTokens, onRetry){
-  const MAX_CLIENT_RETRIES = 2;
-  const DELAY_MS = 4000;
+  const RETRY_DELAYS_MS = [4000, 8000, 15000];
   let lastError;
-  for(let attempt=0; attempt<=MAX_CLIENT_RETRIES; attempt++){
+  for(let attempt=0; attempt<=RETRY_DELAYS_MS.length; attempt++){
     try{
       return await callBackend(systemInstruction, userText, maxOutputTokens);
     }catch(e){
       lastError = e;
       const m = (e.message||'').toLowerCase();
       const retryable = m.includes('occupat') || m.includes('timeout') || m.includes('tempo') || m.includes('rete') || m.includes('errore del server') || m.includes('risposta non valida');
-      if(!retryable || attempt===MAX_CLIENT_RETRIES) throw e;
-      if(onRetry) onRetry(attempt+1, MAX_CLIENT_RETRIES);
-      await new Promise(r=>setTimeout(r, DELAY_MS));
+      if(!retryable || attempt===RETRY_DELAYS_MS.length) throw e;
+      if(onRetry) onRetry(attempt+1, RETRY_DELAYS_MS.length);
+      await new Promise(r=>setTimeout(r, RETRY_DELAYS_MS[attempt]));
     }
   }
   throw lastError;
@@ -1501,11 +1502,34 @@ function toggleOrdine(el, ord){
 // sequenza (Infanzia → Primaria → Secondaria), un livello alla volta.
 const LIVELLI_ORDINE = ['infanzia','primaria','secondaria'];
 // Pausa tra una chiamata IA e la successiva: generare molte discipline in rapida
-// sequenza può superare i limiti di richieste-al-minuto del provider IA, che è la causa
-// più frequente del messaggio "server occupati" durante generazioni lunghe (es. curricolo
-// completo su tre ordini). Questa pausa distribuisce le richieste nel tempo.
+// sequenza può superare i limiti di richieste-al-minuto del provider IA, che è una causa
+// frequente di errori durante generazioni lunghe (es. curricolo completo su tre ordini).
+// Questa pausa distribuisce le richieste nel tempo.
 const TASK_PACING_MS = 2500;
+// Se una parte fallisce (es. timeout momentaneo del provider IA), il sistema riprova da
+// solo su QUELLA parte per questi round successivi, con pause via via più lunghe: un
+// timeout è quasi sempre transitorio e nella grande maggioranza dei casi si risolve da
+// sé se si aspetta un po' prima di ritentare. Solo se anche questi tentativi automatici
+// falliscono si chiede un intervento manuale.
+const AUTO_RETRY_BACKOFF_MS = [5000, 10000, 20000, 30000];
 function attesa(ms){ return new Promise(resolve=>setTimeout(resolve, ms)); }
+
+// Segnaposto usato per le parti non ancora generate: testo fisso (senza il messaggio di
+// errore variabile) così può essere individuato e sostituito con precisione quando la
+// parte viene infine generata con successo.
+function placeholderMancante(task){
+  return '## '+task.label+'\n[⚠️ Sezione non generata dopo diversi tentativi automatici. Usa "Riprova le parti mancanti" qui sotto per completarla.]';
+}
+// Ricompone il documento nell'ordine corretto usando quanto generato finora (fino a
+// uptoIndex incluso, o tutto se omesso); le parti ancora mancanti mostrano il segnaposto.
+function assemblaCurricolo(stato, allTasks, uptoIndex){
+  const n = (uptoIndex===undefined) ? allTasks.length : uptoIndex;
+  let out = '';
+  for(let i=0;i<n;i++){
+    out += (stato[i].text!=null ? stato[i].text : placeholderMancante(allTasks[i])) + '\n\n';
+  }
+  return out.trim();
+}
 
 async function generateCurricolo(){
   const src = state.ptof.text || state.ptof.manualText;
@@ -1517,59 +1541,82 @@ async function generateCurricolo(){
   const preview = document.getElementById('curricoloPreview');
   preview.innerText = '';
 
-  // Una "tappa" per ogni ordine di scuola selezionato (nell'ordine Infanzia → Primaria →
-  // Secondaria), ciascuna con le proprie discipline da generare in sequenza.
-  const tappe = selected.map(ord=>({
-    ord,
-    label: ORDINI[ord].label,
-    tasks: ord==='infanzia'
-      ? [{ord, label:"Scuola dell'Infanzia"}]
-      : DISCIPLINE[ord].map(d=>({ord, disciplina:d, label:ORDINI[ord].label+' — '+d}))
-  }));
-  const totalTasks = tappe.reduce((n,t)=>n+t.tasks.length, 0);
+  // Elenco piatto di tutte le parti da generare, nell'ordine Infanzia → Primaria → Secondaria.
+  const allTasks = [];
+  selected.forEach(ord=>{
+    const tappaLabel = ORDINI[ord].label;
+    if(ord==='infanzia'){ allTasks.push({ord, label:"Scuola dell'Infanzia", tappaLabel}); }
+    else { DISCIPLINE[ord].forEach(d=>allTasks.push({ord, disciplina:d, label:ORDINI[ord].label+' — '+d, tappaLabel})); }
+  });
+  const totalTasks = allTasks.length;
+  const stato = allTasks.map(()=>({text:null, error:null}));
 
-  let full = '';
-  let falliti = [];
-  let done = 0;
+  async function generaUnTask(idx){
+    try{
+      stato[idx].text = await generateCurricoloChunk(allTasks[idx], src);
+      stato[idx].error = null;
+      return true;
+    }catch(e){
+      stato[idx].error = e.message;
+      return false;
+    }
+  }
+
   showProgress('curricolo');
   setProgress('curricolo', 3, 'Avvio generazione…');
 
-  for(const tappa of tappe){
-    let sezione = '';
-    for(const task of tappa.tasks){
-      const label = 'Livello '+tappa.label+': '+task.label+' ('+(done+1)+'/'+totalTasks+')…';
-      status.textContent = label;
-      setProgress('curricolo', Math.round(done/totalTasks*100), label);
-      try{
-        sezione += await generateCurricoloChunk(task, src) + '\n\n';
-      }catch(e){
-        sezione += '\n[Errore per '+task.label+': '+e.message+']\n\n';
-        falliti.push(task);
-        toast(e.message, {err:true, duration:6000});
-      }
-      done++;
-      setProgress('curricolo', Math.round(done/totalTasks*100));
-      preview.innerText = full + sezione;
-      if(done < totalTasks) await attesa(TASK_PACING_MS);
-    }
-    full += sezione;
-    // Salva subito il progresso al termine di ogni livello: se un livello successivo
-    // dovesse fallire, quanto già generato (es. Infanzia e Primaria) resta acquisito.
-    state.curricolo = full.trim(); await saveState();
+  // Primo giro: una chiamata per ciascuna parte.
+  for(let idx=0; idx<totalTasks; idx++){
+    const task = allTasks[idx];
+    const label = 'Livello '+task.tappaLabel+': '+task.label+' ('+(idx+1)+'/'+totalTasks+')…';
+    status.textContent = label;
+    setProgress('curricolo', Math.round(idx/totalTasks*100), label);
+    const ok = await generaUnTask(idx);
+    if(!ok) toast(stato[idx].error, {err:true, duration:5000});
+    setProgress('curricolo', Math.round((idx+1)/totalTasks*100));
+    preview.innerText = assemblaCurricolo(stato, allTasks, idx+1);
+    // Salvataggio progressivo: se la sessione si interrompe, quanto già generato non si perde.
+    state.curricolo = preview.innerText; await saveState();
+    if(idx < totalTasks-1) await attesa(TASK_PACING_MS);
   }
 
+  // Tentativi automatici sulle parti fallite, con pause crescenti: il sistema si "auto-ripara"
+  // senza bisogno che l'utente clicchi nulla, così un timeout momentaneo del provider IA non
+  // lascia il documento incompleto.
+  for(let round=0; round<AUTO_RETRY_BACKOFF_MS.length; round++){
+    const mancanti = stato.map((s,i)=>s.text==null?i:-1).filter(i=>i>=0);
+    if(!mancanti.length) break;
+    status.textContent = 'Correzione automatica '+(round+1)+'/'+AUTO_RETRY_BACKOFF_MS.length+': in attesa prima di riprovare '+mancanti.length+' parte/i…';
+    await attesa(AUTO_RETRY_BACKOFF_MS[round]);
+    let i = 0;
+    for(const idx of mancanti){
+      i++;
+      const task = allTasks[idx];
+      status.textContent = 'Correzione automatica '+(round+1)+': '+task.label+' ('+i+'/'+mancanti.length+')…';
+      await generaUnTask(idx);
+      preview.innerText = assemblaCurricolo(stato, allTasks);
+      state.curricolo = preview.innerText; await saveState();
+      if(i < mancanti.length) await attesa(TASK_PACING_MS);
+    }
+  }
+
+  const falliti = allTasks.filter((t,i)=>stato[i].text==null);
+  state.curricolo = assemblaCurricolo(stato, allTasks);
   state.curricoloFalliti = falliti;
+  await saveState();
+
   status.textContent = falliti.length
-    ? 'Curricolo generato con '+falliti.length+' parte/i da riprovare (vedi sotto).'
-    : 'Curricolo generato.';
-  setProgress('curricolo', 100, falliti.length ? 'Completato con alcuni errori' : 'Completato ✓');
+    ? falliti.length+' parte/i non riuscite anche dopo i tentativi automatici (vedi sotto).'
+    : 'Curricolo generato completamente.';
+  setProgress('curricolo', 100, falliti.length ? 'Completato con alcune parti mancanti' : 'Completato ✓');
   setTimeout(()=>hideProgress('curricolo'), 900);
   renderCurricoloRetry();
   btn.disabled=false;
 }
 
-// Riprova a generare solo le parti (discipline) che sono fallite, senza rigenerare
-// da capo tutto il curricolo.
+// Ultima rete di sicurezza manuale: usata solo se anche i tentativi automatici falliscono
+// (es. un'interruzione prolungata del provider IA). Sostituisce chirurgicamente il
+// segnaposto di ciascuna parte mancante con il contenuto generato con successo.
 async function retryCurricoloFalliti(){
   const falliti = state.curricoloFalliti || [];
   if(!falliti.length) return;
@@ -1580,7 +1627,6 @@ async function retryCurricoloFalliti(){
   if(retryBtn) retryBtn.disabled = true;
   showProgress('curricolo');
 
-  let full = state.curricolo ? state.curricolo + '\n\n' : '';
   let ancoraFalliti = [];
   let i = 0;
   for(const task of falliti){
@@ -1589,16 +1635,22 @@ async function retryCurricoloFalliti(){
     status.textContent = label;
     setProgress('curricolo', Math.round((i-1)/falliti.length*100), label);
     try{
-      full += await generateCurricoloChunk(task, src) + '\n\n';
+      const testo = await generateCurricoloChunk(task, src);
+      const segnaposto = placeholderMancante(task);
+      if(state.curricolo.includes(segnaposto)){
+        state.curricolo = state.curricolo.replace(segnaposto, testo);
+      } else {
+        state.curricolo = (state.curricolo ? state.curricolo+'\n\n' : '') + testo;
+      }
+      preview.innerText = state.curricolo;
+      await saveState();
     }catch(e){
       ancoraFalliti.push(task);
       toast(e.message, {err:true, duration:6000});
     }
     setProgress('curricolo', Math.round(i/falliti.length*100));
-    preview.innerText = full;
     if(i < falliti.length) await attesa(TASK_PACING_MS);
   }
-  state.curricolo = full.trim();
   state.curricoloFalliti = ancoraFalliti;
   await saveState();
   status.textContent = ancoraFalliti.length ? (ancoraFalliti.length+' parte/i ancora da riprovare.') : 'Curricolo completato.';
