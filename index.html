@@ -6,7 +6,7 @@
 <title>EDUPLAN — Curricolo, programmazione e valutazione con l'IA</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Cormorant+Garamond:ital,wght@1,500;1,600&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
 <style>
@@ -32,6 +32,7 @@
   --font-display:'Space Grotesk',system-ui,sans-serif;
   --font-body:'Inter',system-ui,-apple-system,sans-serif;
   --font-mono:'IBM Plex Mono',ui-monospace,monospace;
+  --font-signature:'Cormorant Garamond',Georgia,serif;
 }
 *{box-sizing:border-box;}
 html{scroll-behavior:smooth;}
@@ -92,6 +93,24 @@ textarea,input,select{font-family:inherit;font-size:14px;}
   background:
     radial-gradient(600px 400px at 82% 10%, rgba(232,184,75,.28), transparent 60%),
     radial-gradient(500px 380px at 8% 85%, rgba(47,111,94,.16), transparent 60%);
+}
+/* Logo discreto nello spazio vuoto a destra dell'hero: centrato verticalmente rispetto al
+   blocco di testo (non più ancorato in alto) per un equilibrio visivo migliore, dimensione
+   contenuta e leggera trasparenza per non competere con il titolo. Nascosto sotto i 900px
+   dove quello spazio libero non c'è più. */
+.hero-logo{
+  position:absolute;
+  top:50%;
+  right:8%;
+  transform:translateY(-50%);
+  height:140px;
+  width:auto;
+  opacity:.5;
+  z-index:0;
+  pointer-events:none;
+}
+@media (max-width:900px){
+  .hero-logo{display:none;}
 }
 .eyebrow{
   font-family:var(--font-mono);font-size:12px;letter-spacing:.16em;text-transform:uppercase;
@@ -246,6 +265,14 @@ textarea{min-height:90px;line-height:1.55;resize:vertical;}
 .chat-input-row textarea{flex:1;min-height:44px;}
 
 .footer-note{padding:40px 0 60px;text-align:center;font-size:12px;color:var(--ink-faint);}
+.footer-note .signature-name{
+  font-family:var(--font-signature);
+  font-style:italic;
+  font-weight:600;
+  font-size:16px;
+  color:var(--brand-deep);
+  letter-spacing:.01em;
+}
 .print-only{display:none;}
 @media print{ body>*:not(#printArea){display:none !important;} #printArea{display:block !important;padding:34px;font-family:Georgia,serif;color:#111;} }
 </style>
@@ -313,6 +340,7 @@ textarea{min-height:90px;line-height:1.55;resize:vertical;}
 
 <!-- ============ SEZIONE 1 — HERO ============ -->
 <section class="hero">
+  <img src="logo.png" alt="" aria-hidden="true" class="hero-logo">
   <div class="wrap">
     <div class="eyebrow">Piattaforma IA per la scuola italiana</div>
     <h1>EDU<span>PLAN</span></h1>
@@ -844,7 +872,7 @@ textarea{min-height:90px;line-height:1.55;resize:vertical;}
 
 <div class="footer-note">
   <img src="logo.png" alt="EduPlan — a cura della Prof.ssa Maddalena Focetola" class="logo-soft" style="height:70px;width:auto;display:block;margin:0 auto 10px;">
-  EDUPLAN — a cura della Prof.ssa Maddalena Focetola · strumento di supporto alla progettazione didattica · Riferimenti: D.M. 254/2012, D.M. 221/2025, D.M. 14/2024
+  EDUPLAN — a cura della <span class="signature-name">Prof.ssa Maddalena Focetola</span> · strumento di supporto alla progettazione didattica · Riferimenti: D.M. 254/2012, D.M. 221/2025, D.M. 14/2024
 </div>
 
 <script>
