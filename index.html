@@ -94,20 +94,23 @@ textarea,input,select{font-family:inherit;font-size:14px;}
     radial-gradient(600px 400px at 82% 10%, rgba(232,184,75,.28), transparent 60%),
     radial-gradient(500px 380px at 8% 85%, rgba(47,111,94,.16), transparent 60%);
 }
-/* Logo discreto nello spazio vuoto a destra dell'hero: centrato verticalmente rispetto al
-   blocco di testo (non più ancorato in alto) per un equilibrio visivo migliore, dimensione
-   contenuta e leggera trasparenza per non competere con il titolo. Nascosto sotto i 900px
-   dove quello spazio libero non c'è più. */
+/* Logo nello spazio vuoto a destra dell'hero: più evidente (dimensione e opacità
+   maggiori) ma con i contorni sfumati tramite una maschera radiale, così si fonde
+   con lo sfondo della pagina invece di sembrare un'immagine incollata sopra.
+   Centrato verticalmente rispetto al blocco di testo. Nascosto sotto i 900px dove
+   quello spazio libero non c'è più. */
 .hero-logo{
   position:absolute;
   top:50%;
-  right:8%;
+  right:6%;
   transform:translateY(-50%);
-  height:140px;
+  height:220px;
   width:auto;
-  opacity:.5;
+  opacity:.85;
   z-index:0;
   pointer-events:none;
+  -webkit-mask-image:radial-gradient(closest-side, rgba(0,0,0,1) 45%, rgba(0,0,0,0) 100%);
+  mask-image:radial-gradient(closest-side, rgba(0,0,0,1) 45%, rgba(0,0,0,0) 100%);
 }
 @media (max-width:900px){
   .hero-logo{display:none;}
