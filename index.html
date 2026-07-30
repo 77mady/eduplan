@@ -437,13 +437,14 @@ textarea{min-height:90px;line-height:1.55;resize:vertical;}
       </div>
 
       <div class="row-actions">
-        <button class="btn accent" id="btnGenCurricolo" onclick="generateCurricolo()">✦ Genera / visualizza Anteprima</button>
+        <button class="btn accent" id="btnGenCurricolo" onclick="generateCurricolo()">✦ Genera curricolo (Infanzia → Primaria → Secondaria)</button>
       </div>
       <div class="muted" id="curricoloStatus" style="margin-top:8px;"></div>
       <div class="progress-wrap" id="progress-curricolo" style="display:none;">
         <div class="progress-track"><div class="progress-fill" id="progress-fill-curricolo"></div></div>
         <div class="progress-label" id="progress-label-curricolo"></div>
       </div>
+      <div id="curricoloRetryWrap" style="display:none;"></div>
 
       <div class="doc-toolbar"><strong style="font-size:13.5px;">Curricolo Verticale d'Istituto</strong></div>
       <div class="doc-preview" id="curricoloPreview" data-placeholder="Il curricolo generato apparirà qui, organizzato per ordine e disciplina…"></div>
@@ -899,6 +900,7 @@ let state = {
   provider:'gemini',
   ptof:{fileName:'', text:'', manualText:''},
   priorities:'', curricolo:'', programmazione:'', valutazione:'', uda:'', udaGriglia:'',
+  curricoloFalliti:[],
   existingDocs:{curricolo:'', programmazione:'', uda:''},
   selection:{ordine:'', classe:'', disciplina:''},
   ordiniAttivi:{infanzia:true, primaria:true, secondaria:true},
@@ -919,6 +921,7 @@ function mergeState(raw){
     if(!state.provider) state.provider='gemini';
     if(!state.udaCompetenze) state.udaCompetenze=[];
     if(!state.udaTrasversali) state.udaTrasversali=[];
+    if(!state.curricoloFalliti) state.curricoloFalliti=[];
   }catch(e){}
 }
 function rawStateHasContent(raw){
@@ -1494,44 +1497,126 @@ function toggleOrdine(el, ord){
   state.ordiniAttivi[ord] = el.classList.contains('on');
   saveState();
 }
+// Ordine fisso dei livelli scolastici: la generazione avviene sempre in questa
+// sequenza (Infanzia → Primaria → Secondaria), un livello alla volta.
+const LIVELLI_ORDINE = ['infanzia','primaria','secondaria'];
+// Pausa tra una chiamata IA e la successiva: generare molte discipline in rapida
+// sequenza può superare i limiti di richieste-al-minuto del provider IA, che è la causa
+// più frequente del messaggio "server occupati" durante generazioni lunghe (es. curricolo
+// completo su tre ordini). Questa pausa distribuisce le richieste nel tempo.
+const TASK_PACING_MS = 2500;
+function attesa(ms){ return new Promise(resolve=>setTimeout(resolve, ms)); }
+
 async function generateCurricolo(){
   const src = state.ptof.text || state.ptof.manualText;
   if(!src){ toast('Carica prima il PTOF nella sezione precedente.', {err:true}); document.getElementById('sec2').scrollIntoView({behavior:'smooth'}); return; }
-  const selected = Object.keys(state.ordiniAttivi).filter(k=>state.ordiniAttivi[k]);
+  const selected = LIVELLI_ORDINE.filter(k=>state.ordiniAttivi[k]);
   if(!selected.length){ toast('Seleziona almeno un ordine di scuola.', {err:true}); return; }
   const btn = document.getElementById('btnGenCurricolo'); btn.disabled=true;
   const status = document.getElementById('curricoloStatus');
   const preview = document.getElementById('curricoloPreview');
   preview.innerText = '';
 
-  const tasks = [];
-  selected.forEach(ord=>{
-    if(ord==='infanzia'){ tasks.push({ord, label:"Scuola dell'Infanzia"}); }
-    else { DISCIPLINE[ord].forEach(d=>tasks.push({ord, disciplina:d, label:ORDINI[ord].label+' — '+d})); }
-  });
+  // Una "tappa" per ogni ordine di scuola selezionato (nell'ordine Infanzia → Primaria →
+  // Secondaria), ciascuna con le proprie discipline da generare in sequenza.
+  const tappe = selected.map(ord=>({
+    ord,
+    label: ORDINI[ord].label,
+    tasks: ord==='infanzia'
+      ? [{ord, label:"Scuola dell'Infanzia"}]
+      : DISCIPLINE[ord].map(d=>({ord, disciplina:d, label:ORDINI[ord].label+' — '+d}))
+  }));
+  const totalTasks = tappe.reduce((n,t)=>n+t.tasks.length, 0);
 
   let full = '';
-  let i = 0;
+  let falliti = [];
+  let done = 0;
   showProgress('curricolo');
   setProgress('curricolo', 3, 'Avvio generazione…');
-  for(const task of tasks){
+
+  for(const tappa of tappe){
+    let sezione = '';
+    for(const task of tappa.tasks){
+      const label = 'Livello '+tappa.label+': '+task.label+' ('+(done+1)+'/'+totalTasks+')…';
+      status.textContent = label;
+      setProgress('curricolo', Math.round(done/totalTasks*100), label);
+      try{
+        sezione += await generateCurricoloChunk(task, src) + '\n\n';
+      }catch(e){
+        sezione += '\n[Errore per '+task.label+': '+e.message+']\n\n';
+        falliti.push(task);
+        toast(e.message, {err:true, duration:6000});
+      }
+      done++;
+      setProgress('curricolo', Math.round(done/totalTasks*100));
+      preview.innerText = full + sezione;
+      if(done < totalTasks) await attesa(TASK_PACING_MS);
+    }
+    full += sezione;
+    // Salva subito il progresso al termine di ogni livello: se un livello successivo
+    // dovesse fallire, quanto già generato (es. Infanzia e Primaria) resta acquisito.
+    state.curricolo = full.trim(); await saveState();
+  }
+
+  state.curricoloFalliti = falliti;
+  status.textContent = falliti.length
+    ? 'Curricolo generato con '+falliti.length+' parte/i da riprovare (vedi sotto).'
+    : 'Curricolo generato.';
+  setProgress('curricolo', 100, falliti.length ? 'Completato con alcuni errori' : 'Completato ✓');
+  setTimeout(()=>hideProgress('curricolo'), 900);
+  renderCurricoloRetry();
+  btn.disabled=false;
+}
+
+// Riprova a generare solo le parti (discipline) che sono fallite, senza rigenerare
+// da capo tutto il curricolo.
+async function retryCurricoloFalliti(){
+  const falliti = state.curricoloFalliti || [];
+  if(!falliti.length) return;
+  const src = state.ptof.text || state.ptof.manualText;
+  const status = document.getElementById('curricoloStatus');
+  const preview = document.getElementById('curricoloPreview');
+  const retryBtn = document.getElementById('btnRetryCurricolo');
+  if(retryBtn) retryBtn.disabled = true;
+  showProgress('curricolo');
+
+  let full = state.curricolo ? state.curricolo + '\n\n' : '';
+  let ancoraFalliti = [];
+  let i = 0;
+  for(const task of falliti){
     i++;
-    status.textContent = 'Generazione: '+task.label+' ('+i+'/'+tasks.length+')…';
-    setProgress('curricolo', Math.round((i-1)/tasks.length*100), 'Generazione: '+task.label+' ('+i+'/'+tasks.length+')');
+    const label = 'Nuovo tentativo: '+task.label+' ('+i+'/'+falliti.length+')…';
+    status.textContent = label;
+    setProgress('curricolo', Math.round((i-1)/falliti.length*100), label);
     try{
       full += await generateCurricoloChunk(task, src) + '\n\n';
     }catch(e){
-      full += '\n[Errore per '+task.label+': '+e.message+']\n\n';
+      ancoraFalliti.push(task);
       toast(e.message, {err:true, duration:6000});
     }
-    setProgress('curricolo', Math.round(i/tasks.length*100));
+    setProgress('curricolo', Math.round(i/falliti.length*100));
     preview.innerText = full;
+    if(i < falliti.length) await attesa(TASK_PACING_MS);
   }
-  state.curricolo = full.trim(); await saveState();
-  status.textContent = 'Curricolo generato.';
+  state.curricolo = full.trim();
+  state.curricoloFalliti = ancoraFalliti;
+  await saveState();
+  status.textContent = ancoraFalliti.length ? (ancoraFalliti.length+' parte/i ancora da riprovare.') : 'Curricolo completato.';
   setProgress('curricolo', 100, 'Completato ✓');
-  setTimeout(()=>hideProgress('curricolo'), 800);
-  btn.disabled=false;
+  setTimeout(()=>hideProgress('curricolo'), 900);
+  renderCurricoloRetry();
+  if(retryBtn) retryBtn.disabled = false;
+}
+
+function renderCurricoloRetry(){
+  const wrap = document.getElementById('curricoloRetryWrap');
+  if(!wrap) return;
+  const falliti = state.curricoloFalliti || [];
+  if(!falliti.length){ wrap.style.display='none'; wrap.innerHTML=''; return; }
+  wrap.style.display='block';
+  wrap.innerHTML =
+    '<div class="muted" style="margin-top:8px;color:#b3261e;">⚠️ Parti non generate: '+falliti.map(f=>escapeHtml(f.label)).join(', ')+'</div>'+
+    '<button id="btnRetryCurricolo" class="btn accent sm" style="margin-top:6px;" onclick="retryCurricoloFalliti()">↻ Riprova solo le parti mancanti</button>';
 }
 async function generateCurricoloChunk(task, ptofText){
   const priorities = state.priorities || '(nessuna priorità generata: usa direttamente il PTOF)';
@@ -1841,6 +1926,7 @@ async function populateUI(){
 
   document.getElementById('prioritiesPreview').innerText = state.priorities || '';
   document.getElementById('curricoloPreview').innerText = state.curricolo || '';
+  renderCurricoloRetry();
   document.getElementById('programmazionePreview').innerText = state.programmazione || '';
   document.getElementById('valutazionePreview').innerText = state.valutazione || '';
   document.getElementById('udaPreview').innerText = state.uda || '';
