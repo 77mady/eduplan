@@ -27,6 +27,14 @@ function isTransient(status, message) {
     m.includes('rate limit');
 }
 
+// Un 429/quota è un limite di richieste-al-minuto: riprovare sullo STESSO modello dopo soli
+// 2 secondi quasi mai risolve (la finestra si resetta in decine di secondi). Conviene invece
+// passare subito al modello successivo, che ha un proprio contatore di quota separato.
+function isRateLimit(status, message) {
+  const m = (message || '').toLowerCase();
+  return status === 429 || m.includes('quota') || m.includes('rate limit');
+}
+
 module.exports = async (req, res) => {
   const provider = (req.method === 'GET' ? req.query.provider : (req.body && req.body.provider)) || 'gemini';
   const apiKey = provider === 'mistral' ? process.env.MISTRAL_API_KEY : process.env.GEMINI_API_KEY;
@@ -102,7 +110,7 @@ async function callGeminiOnce(apiKey, model, body, deadline) {
     try { data = await apiRes.json(); } catch (e) { throw { transient: true, message: 'Risposta non valida dal server (' + apiRes.status + ').' }; }
     if (!apiRes.ok) {
       const message = (data && data.error && data.error.message) || ('Errore ' + apiRes.status);
-      throw { transient: isTransient(apiRes.status, message), message };
+      throw { transient: isTransient(apiRes.status, message), status: apiRes.status, message };
     }
     return data;
   } catch (err) {
@@ -125,6 +133,7 @@ async function callGeminiWithFallback(apiKey, body, deadline) {
       } catch (err) {
         lastMessage = err.message;
         if (!err.transient) break;
+        if (isRateLimit(err.status, err.message)) break; // passa subito al modello successivo
         if (Date.now() + RETRY_DELAY_MS >= deadline) break;
         await sleep(RETRY_DELAY_MS);
       }
@@ -189,7 +198,7 @@ async function callMistralOnce(apiKey, messages, tokensPerCall, deadline) {
     try { data = await apiRes.json(); } catch (e) { throw { transient: true, message: 'Risposta non valida dal server (' + apiRes.status + ').' }; }
     if (!apiRes.ok) {
       const message = (data && data.error && data.error.message) || ('Errore ' + apiRes.status);
-      throw { transient: isTransient(apiRes.status, message), message };
+      throw { transient: isTransient(apiRes.status, message), status: apiRes.status, message };
     }
     return data;
   } catch (err) {
